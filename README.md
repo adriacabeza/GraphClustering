@@ -13,6 +13,9 @@ We will be using the following graphs from the [Stanford Network Analysis Projec
 | web-NotreDame | 325729    | 1117563 | 20        |
 | roadNet-CA    | 1957027   | 2760388 | 50        |
 
+## Report
+-> [https://www.overleaf.com/5514615922jvndkvxytssz](https://www.overleaf.com/5514615922jvndkvxytssz)
+
 
 ## Authors
 
