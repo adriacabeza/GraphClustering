@@ -16,11 +16,24 @@ We will be using the following graphs from the [Stanford Network Analysis Projec
 ## Report
 -> [https://www.overleaf.com/5514615922jvndkvxytssz](https://www.overleaf.com/5514615922jvndkvxytssz)
 
+### Requirements
 
-## Prerequisites
-- To install all the requirements please use the requirements.txt
+1. Python 3.7+.
+
+### Recommendations
+Usage of [virtualenv](https://realpython.com/blog/python/python-virtual-environments-a-primer/) is recommended for package library / runtime isolation.
+
+
+### Usage
+
+- Install dependencies
 ```bash
 pip install -r requirements.txt
+```
+
+- Run the clustering algorithm
+```bash
+python3 graph_clustering.py --file NAME_OF_THE_FILE --normalize BOOLEAN --k NUMBER_OF_CLUSTERS
 ```
 
 ## Authors

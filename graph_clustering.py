@@ -13,7 +13,7 @@ from scipy.sparse.linalg import eigsh
 parser = argparse.ArgumentParser()
 parser.add_argument('--file', type=str, default='./data/oregon1_010331.txt')
 parser.add_argument('--normalize', type=bool, default=True)
-parser.add_argument('--k', type=int, default=5)
+parser.add_argument('--k', type=int, default=2)
 args = parser.parse_args()
 
 
@@ -81,7 +81,7 @@ def write_result(labels):
     print('Results: {}'.format(labels))
     with open(args.file+'_result.txt','w') as f:
         for i,l in enumerate(labels):
-            f.write('\t'+l) 
+            f.write('\t'+str(l)) 
     
 
 # Main function
