@@ -17,6 +17,12 @@ We will be using the following graphs from the [Stanford Network Analysis Projec
 -> [https://www.overleaf.com/5514615922jvndkvxytssz](https://www.overleaf.com/5514615922jvndkvxytssz)
 
 
+## Prerequisites
+- To install all the requirements please use the requirements.txt
+```bash
+pip install -r requirements.txt
+```
+
 ## Authors
 
 👤 **Alvaro Orgaz and Adrià Cabeza**
