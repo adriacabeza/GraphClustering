@@ -2,6 +2,12 @@
 
 We will be using the following graphs from the [Stanford Network Analysis Project (SNAP)](http://snap.stanford.edu/data/index.html): ca-GrQc, Oregon-1, roadNet-CA, soc-Epinions1, and web-NotreDame
 
+<p align="center">
+<img src="docs/tsne5clusters.png">
+  <br>
+  Visualization of 5 first eigenvectors of Oregon-1 and its clusters after running K-Way Spectral Algorithm
+</p>
+
 
 ## Dataset Statistics: 
 
