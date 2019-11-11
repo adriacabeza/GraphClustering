@@ -6,14 +6,17 @@ import numpy as np
 import scipy as sp
 
 from tqdm import tqdm
-from numpy import linalg as LA
+from sklearn.manifold import TSNE
 from scipy.cluster.vq import kmeans
-from scipy.sparse.linalg import eigsh 
+from scipy.sparse.linalg import eigsh
+from mpl_toolkits.mplot3d import Axes3D #to make scatter plots in 3D
+
+from numpy import linalg as LA
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--file', type=str, default='./data/oregon1_010331.txt')
 parser.add_argument('--normalize', type=bool, default=True)
-parser.add_argument('--k', type=int, default=2)
+parser.add_argument('--k', type=int, default=5)
 args = parser.parse_args()
 
 
@@ -33,6 +36,25 @@ def read_graph(G):
                 G.add_edge(u, v) 
     print('Finished reading graph')
 
+'''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct 
+RGB color; the keyword argument name must be a standard mpl colormap name.'''
+def get_cmap(n, name='hsv'):
+   return plt.cm.get_cmap(name, n)
+
+
+# Visualize high-dimensional using tSNE
+def draw_tSNE(data, y_hat):
+    tsne = TSNE(n_components=2, random_state=0) # n_components= number of dimensions
+    #data3d = tsne.fit_transform(data)
+    colors = get_cmap(args.k)
+    #fig = plt.figure(figsize=(6, 5))
+    #ax = fig.add_subplot(111, projection='3d') # for 3d
+    plt.figure(figsize=(6,5))
+    for i,y in enumerate(data3d):
+        #ax.scatter(y[0], y[1], y[2], color=colors(y_hat[i]))
+        plt.scatter(y[0],y[1],color=colors(y_hat[i]))
+    plt.show()
+
 
 # Spectral clustering algorithm using K-means 
 def spectral_clustering(A):
@@ -40,13 +62,14 @@ def spectral_clustering(A):
     print(np.shape(A))
     eigVal, eigVec = get_eig_laplacian(A)
 
-    print('First two eigenvalues:{}'.format(eigVal))
-    print('First two eigenvectors:{}'.format(eigVec))
+    print('First {} eigenvalues:{}'.format(args.k, eigVal))
+    print('First {} eigenvectors:{}'.format(args.k, eigVec))
    
     # normalize those eigenvectors
     rows_norm = LA.norm(eigVec, axis=1, ord=2)
     Y = (eigVec.T /rows_norm).T
     
+
     # run K-means
     centroids, distortion = kmeans(Y,args.k)
     
@@ -55,6 +78,7 @@ def spectral_clustering(A):
     for i in range(n):
         dists = np.array([np.linalg.norm(Y[i] - centroids[c]) for c in range(args.k)])
         y_hat[i] = np.argmin(dists)
+    draw_tSNE(Y, y_hat)
     return y_hat
 
 
@@ -73,7 +97,7 @@ def laplacian_matrix(A):
 
 # Computes the two(k) smallest(SM) eigenvalues and eigenvectors 
 def get_eig_laplacian(A):
-    return eigsh(laplacian_matrix(A), k=2, which='SM')
+    return eigsh(laplacian_matrix(A), k=args.k, which='SM')
 
 
 # Writes the result to a file
@@ -91,8 +115,8 @@ def main():
     print_info(G)
     A = nx.to_numpy_matrix(G)
     print('Starting the algorithm')
-    write_result(spectral_clustering(A))
-
+    print(spectral_clustering(A))
+    
 
 if __name__ == '__main__':
     main()
