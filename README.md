@@ -16,6 +16,20 @@ We will be using the following graphs from the [Stanford Network Analysis Projec
 ## Report
 -> [https://www.overleaf.com/5514615922jvndkvxytssz](https://www.overleaf.com/5514615922jvndkvxytssz)
 
+
+### STUFF WE CAN TRY
+
+- Recursive bi-partitioning: use the eigenvector with second smallest eigenvalue (Fiedler vector) to bipartition the graph by finding the best splitting point:
+  - Pick a constant value (0, or 0.5).
+  - Pick the median value as splitting point.
+  - Look for the splitting point that has the minimum Ncut value:
+    1. Choose n possible splitting points.
+    2. Compute Ncut value.
+    3. Pick minimum.
+    
+- K-way Spectral Algorithm: Take the first k eigenvectors and then use k-means to make clusters using the eigenvectors as features (http://ai.stanford.edu/~ang/papers/nips01-spectral.pdf)
+
+
 ### Requirements
 
 1. Python 3.7+.
