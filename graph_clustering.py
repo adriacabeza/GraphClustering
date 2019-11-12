@@ -36,23 +36,20 @@ def read_graph(G):
                 G.add_edge(u, v) 
     print('Finished reading graph')
 
-'''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct 
-RGB color; the keyword argument name must be a standard mpl colormap name.'''
-def get_cmap(n, name='hsv'):
-   return plt.cm.get_cmap(name, n)
-
 
 # Visualize high-dimensional using tSNE
 def draw_tSNE(data, y_hat):
-    tsne = TSNE(n_components=2, random_state=0) # n_components= number of dimensions
-    #data3d = tsne.fit_transform(data)
-    colors = get_cmap(args.k)
-    #fig = plt.figure(figsize=(6, 5))
-    #ax = fig.add_subplot(111, projection='3d') # for 3d
-    plt.figure(figsize=(6,5))
-    for i,y in enumerate(data3d):
-        #ax.scatter(y[0], y[1], y[2], color=colors(y_hat[i]))
-        plt.scatter(y[0],y[1],color=colors(y_hat[i]))
+    tsne = TSNE(n_components=3, random_state=0) # n_components= number of dimensions
+    data3d = tsne.fit_transform(data)
+   
+    colormap = np.array(['coral', 'lightblue', 'r', 'g','b'])
+    fig = plt.figure(figsize=(6, 5))
+    ax = fig.add_subplot(111, projection='3d') # for 3d
+    
+    #fig, ax = plt.subplots()
+    for i,y in enumerate(data3d): 
+        ax.scatter(y[0], y[1], y[2], color=colormap[y_hat[i]])
+        #ax.scatter(y[0], y[1], color=colormap[y_hat[i]])
     plt.show()
 
 
