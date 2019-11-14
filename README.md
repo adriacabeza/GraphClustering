@@ -1,11 +1,13 @@
 <h1 align="center">:milky_way: GraphClustering: Method to partition a graph</h1>
-
 We will be using the following graphs from the [Stanford Network Analysis Project (SNAP)](http://snap.stanford.edu/data/index.html): ca-GrQc, Oregon-1, roadNet-CA, soc-Epinions1, and web-NotreDame
 
+<p float="center">
+  <img src="docs/images/ca-GrQc_kamada_kawai_graph_colormap2clusters.png" width="405" />
+  <img src="docs/images/ca-GrQcSpectralClustering2D.png" width="390" /> 
+</p>
+
 <p align="center">
-<img src="docs/tsne5clusters.png">
-  <br>
-  Visualization of 5 first eigenvectors of Oregon-1 and its clusters after running K-Way Spectral Algorithm
+  Kamada-Kawai graph visualization of the ca-GrQc graph and Clustering using the Spectral Embedding 
 </p>
 
 
@@ -32,8 +34,8 @@ We will be using the following graphs from the [Stanford Network Analysis Projec
     1. Choose n possible splitting points.
     2. Compute Ncut value.
     3. Pick minimum.
-    
-- K-way Spectral Algorithm: Take the first k eigenvectors and then use k-means to make clusters using the eigenvectors as features (http://ai.stanford.edu/~ang/papers/nips01-spectral.pdf)
+  
+- K-way Spectral Algorithm: Take the first k eigenvectors (without the first one) and then use k-means to make clusters using the eigenvectors as features (http://ai.stanford.edu/~ang/papers/nips01-spectral.pdf)
 
 
 ### Requirements
@@ -53,7 +55,19 @@ pip install -r requirements.txt
 
 - Run the clustering algorithm
 ```bash
-python3 graph_clustering.py --file NAME_OF_THE_FILE --normalize BOOLEAN --k NUMBER_OF_CLUSTERS
+[USAGE]
+python3 graph_clustering.py [-h] [--file FILE] [--custom CUSTOM]
+                           [--random RANDOM]
+                           [--normalizeLaplacian NORMALIZELAPLACIAN] [--k K]
+
+arguments:
+  --file FILE           PATH_OF_THE_FILE
+  --custom CUSTOM       CUSTOM_K_MEANS_BOOLEAN
+  --random RANDOM       RANDOM_CENTERS_BOOLEAN
+  --normalizeLaplacian  NORMALIZELAPLACIAN
+                        NORMALIZED_LAPLACIAN_BOOLEAN
+  --k K                 NUMBER_OF_CLUSTERS
+
 ```
 
 ## Authors
