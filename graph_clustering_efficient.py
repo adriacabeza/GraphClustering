@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--file', type=str, default='./data/Oregon-1.txt', help="PATH_OF_THE_FILE")
 parser.add_argument('--custom', default=False, type=lambda x: (str(x).lower() == 'true'), help="CUSTOM_K_MEANS_BOOLEAN")
 parser.add_argument('--random', default=True, type=lambda x: (str(x).lower() == 'true'), help="RANDOM_CENTERS_BOOLEAN")
-parser.add_argument('--normalizeLaplacian', default=True, type=lambda x: (str(x).lower() == 'true'), help="NORMALIZED_LAPLACIAN_BOOLEAN")
+parser.add_argument('--normalizedLaplacian', default=True, type=lambda x: (str(x).lower() == 'true'), help="NORMALIZED_LAPLACIAN_BOOLEAN")
 parser.add_argument('--k', type=int, default=5, help="NUMBER_OF_CLUSTERS")
 args = parser.parse_args()
 
@@ -85,9 +85,9 @@ def custom_kmeans(data, tolerance=0.25, ccore=False):
 
 
 # Spectral clustering algorithm using K-means 
-def spectral_clustering(A):
-    n = np.shape(A)[0]
-    eigVal, eigVec = get_eig_laplacian(A)
+def spectral_clustering(G):
+    n = np.shape(G.get_vertices())[0]
+    eigVal, eigVec = get_eig_laplacian(G)
 
     #Y = np.delete(eigVec, 0, axis=1) # maybe it makes sense to delete the first eigenvector 
     
@@ -132,7 +132,7 @@ def main():
     
     print('Starting the algorithm')
     y_hat = spectral_clustering(G)
-    score = score_clustering(adjacency(G).todense(),y_hat)
+    score = score_clustering(adjacency(G).toarray(), y_hat)
     
     print('Score of the partition: {}'.format(score))
     write_result(y_hat)
