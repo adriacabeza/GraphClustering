@@ -23,7 +23,7 @@ from scipy.cluster.vq import kmeans as scipy_kmeans
 parser = argparse.ArgumentParser()
 parser.add_argument('--file', type=str, default='./data/Oregon-1.txt', help="PATH_OF_THE_FILE")
 parser.add_argument('--custom', default=False, type=lambda x: (str(x).lower() == 'true'), help="CUSTOM_K_MEANS_BOOLEAN")
-parser.add_argument('--hops', default=1, type=int, help='Number of hops implied')
+#parser.add_argument('--hops', default=1, type=int, help='Number of hops implied')
 parser.add_argument('--random', default=True, type=lambda x: (str(x).lower() == 'true'), help="RANDOM_CENTERS_BOOLEAN")
 parser.add_argument('--normalizeLaplacian', default=True, type=lambda x: (str(x).lower() == 'true'), help="NORMALIZED_LAPLACIAN_BOOLEAN")
 parser.add_argument('--k', type=int, default=5, help="NUMBER_OF_CLUSTERS")
@@ -166,7 +166,6 @@ def get_eig_laplacian(A):
 
 # Writes the result to a file TO BE COMPLETED
 def write_result(labels):
-    print('Results: {}'.format(labels))
     with open(args.file+'_result.txt','w') as f:
         for i,l in enumerate(labels):
             f.write('\t'+str(l)) 
@@ -179,14 +178,14 @@ def main():
     f.close()
 
     A = nx.to_numpy_matrix(G) #adjacency matrix
-    A = LA.matrix_power(A,args.hops) 
+    #A2 = LA.matrix_power(A,args.hops) 
     
     print('Starting the algorithm')
     y_hat = spectral_clustering(A)
-    score = score_clustering(A,y_hat)
+    score = score_clustering(A,np.array(y_hat))
     
     print('Score of the partition: {}'.format(score))
-    write_result(y_hat)
+    #write_result(y_hat)
 
 
 if __name__ == '__main__':
