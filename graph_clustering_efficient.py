@@ -91,7 +91,7 @@ def get_eigenvectors(G):
 def write_result(G, labels):
     i = 0
     with open(args.file[:-4]+'_result.txt','w') as f:
-        for node in G.nodes():
+        for node in G.Nodes():
             f.write(str(node.GetId()) +'\t'+str(labels[i]))
             i += 1
 
