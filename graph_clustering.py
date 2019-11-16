@@ -26,24 +26,6 @@ parser.add_argument('--normalizeLaplacian', default=True, type=lambda x: (str(x)
 parser.add_argument('--k', type=int, default=5, help="NUMBER_OF_CLUSTERS")
 args = parser.parse_args()
 
-
-# Reads the graph
-def read_graph(G):
-    num_lines = sum([1 if line[0] != '#' else 0  for line in open(args.file)])
-    v = set()
-    print('Reading graph')
-    with open(args.file) as f:
-        for line in tqdm(f, total=num_lines):
-            if line[0] == '#':
-                #It is a comment, skipping line
-                pass
-            else:
-                values = line.split()
-                (u, v) = tuple(values)
-                G.add_edge(u, v) 
-    print('Finished reading graph')
-
-
 # Draw the eigenvectors embedding to a 2D plane or a 3D plane if it was 3 eigenvectors
 def draw_eigenvectors(data, y_hat):
     # Dimension Reduction TSNE technique when the data is multidimensional
@@ -82,6 +64,7 @@ def score_clustering(A, y_hat):
             e.append(x)  # vertices that are connected to node and their cluster is different
         count += 1
     return total
+
 
 # Faster and more customizable kmeans using pyclustering
 def custom_kmeans(data, tolerance=0.25, ccore=False):
@@ -135,21 +118,29 @@ def spectral_clustering(A):
 # Drawing the graph. CAUTION: it takes too much time to execute
 def draw(G,y_hat):
     print('Starting to draw')
+    """
     colors = ['c','m','y','b','w']
     color_map= []
     for i,node in enumerate(G):
         color_map.append(colors[y_hat[i]])
-    """
     plt.figure()
     nx.draw_circular(G, with_labels=False, node_size=2, node_color=color_map, linewidth=0.1, alpha=0.1)
     plt.savefig(args.file[:-4]+'_circular_graph_colormap.pdf')
     plt.close()
-    """
     plt.figure()
-    nx.draw_kamada_kawai(G, with_labels=False,node_color=color_map, node_size=2, linewidth=0.05, alpha=0.1)
+    nx.draw_kamada_kawai(G, with_labels=False,node_color=color_map, node_size=1, linewidth=0, alpha=1)
     plt.savefig(args.file[:-4]+'_kamada_kawai_graph_colormap.pdf')
     plt.close()
-
+    print('Without edges')
+    plt.figure()
+    nx.draw_networkx_nodes(G,pos=nx.spring_layout(G), alpha=1, node_color=color_map,with_labels=False, node_size=1)
+    plt.savefig(args.file[:-4]+'_spring_only_nodes_graph.pdf')
+    plt.close()
+    """
+    plt.figure(figsize=(20.6,11.6))
+    nx.draw_spring(G, with_labels=False, node_color='blue', node_size=1, lidewidth=0.1, alpha=0.1)
+    plt.savefig(args.file[:-4]+'_spring_only_nodes_graph.png', dpi=900)
+    plt.close()
 
 # Prints information about the graph
 def print_info(G):
@@ -185,16 +176,19 @@ def write_result(labels):
 
 # Main function
 def main():
-    G = nx.Graph()
-    read_graph(G)
+    f = open(args.file, 'rb')
+    G = nx.read_edgelist(f)
+    f.close()
+
     print_info(G)
     A = nx.to_numpy_matrix(G) #adjacency matrix
     print('Starting the algorithm')
-    y_hat = spectral_clustering(A)
-    score = score_clustering(A,y_hat)
-    print('Score of the partition: {}'.format(score))
+    y_hat=[1]
+    #y_hat = spectral_clustering(A)
+    #score = score_clustering(A,y_hat)
+    #print('Score of the partition: {}'.format(score))
     #write_result(y_hat)
-    #draw(G, y_hat)
+    draw(G, y_hat)
 
 
 if __name__ == '__main__':
