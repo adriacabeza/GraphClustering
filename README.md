@@ -51,6 +51,13 @@ Usage of [virtualenv](https://realpython.com/blog/python/python-virtual-environm
 - Install dependencies
 ```bash
 pip install -r requirements.txt
+
+echo 'Installing graph-tool'
+deb http://downloads.skewed.de/apt/bionic bionic universe
+deb-src http://downloads.skewed.de/apt/bionic bionic universe
+apt-key adv --keyserver keys.openpgp.org --recv-key 612DEFB798507F25
+apt-get update 
+apt-get install python3-graph-tool
 ```
 
 - Run the clustering algorithm
