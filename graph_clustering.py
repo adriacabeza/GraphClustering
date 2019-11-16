@@ -1,3 +1,5 @@
+from __future__ import division
+
 import argparse
 import random
 
@@ -26,6 +28,7 @@ parser.add_argument('--normalizeLaplacian', default=True, type=lambda x: (str(x)
 parser.add_argument('--k', type=int, default=5, help="NUMBER_OF_CLUSTERS")
 args = parser.parse_args()
 
+
 # Draw the eigenvectors embedding to a 2D plane or a 3D plane if it was 3 eigenvectors
 def draw_eigenvectors(data, y_hat):
     # Dimension Reduction TSNE technique when the data is multidimensional
@@ -44,25 +47,24 @@ def draw_eigenvectors(data, y_hat):
         fig, ax = plt.subplots()
         for i,y in enumerate(data): 
             ax.scatter(y[0], y[1], color=colormap[y_hat[i]])
-        #plt.title('Scatter plot of the eigenvector embeddings')
         plt.show()
 
 
 # Score our partitions
 def score_clustering(A, y_hat):
+    print('Starting to calculate score')
     total = 0
-    n = A.shape[1]
-    count = 0
-    e = []
-    for x in np.nditer(A):
-        if not count % n and len(e):
-            v_i = len(e)
-            sum_e = sum(e)
-            e = []
-            total += sum_e/v_i
-        if x and y_hat[count % n] != y_hat[count//n]:
-            e.append(x)  # vertices that are connected to node and their cluster is different
-        count += 1
+    for i in range(args.k):
+        v_isize = (y_hat == i).sum() # size of the cluster i
+        print('Starting to check cluster {} of size {}'.format(i, v_isize))
+        count = 0
+        for index,j in enumerate(y_hat):
+            if j == i:
+                # it means we are in a vertex that is inside the cluster i, let's check the number of edges to another clusters
+                for k in range(A.shape[1]):
+                    if A.item((index,k)) and  y_hat[k] != i: # if there is an edge and those clusters are different
+                        count += 1
+        total += count/v_isize
     return total
 
 
@@ -73,8 +75,7 @@ def custom_kmeans(data, tolerance=0.25, ccore=False):
     else:
         centers = kmeans_plusplus_initializer(data, args.k).initialize()
     dimension = len(data[0])
-    metric = distance_metric(type_metric.EUCLIDEAN)
-    #metric = distance_metric(type_metric.USER_DEFINED, func=) 
+    metric = distance_metric(type_metric.EUCLIDEAN) # WE CAN USE OUR DEFINED METRIC TOO
     observer = kmeans_observer()
     kmeans_instance = kmeans(data, centers, tolerance, ccore, observer=observer, metric=metric)
     kmeans_instance.process()
@@ -92,13 +93,10 @@ def spectral_clustering(A):
     n = np.shape(A)[0]
     eigVal, eigVec = get_eig_laplacian(A)
 
-    #print('First {} eigenvalues:{}'.format(args.k+1, eigVal))
-    #print('First {} eigenvectors:{}'.format(args.k+1, eigVec))
+    #Y = np.delete(eigVec, 0, axis=1) # maybe it makes sense to delete the first eigenvector which is trivial
     
-    Y = np.delete(eigVec, 0, axis=1) # deleting the first eigenvector which is trivial
-    
-    rows_norm = LA.norm(Y, axis=1, ord=2)
-    Y = (Y.T /rows_norm).T
+    rows_norm = LA.norm(eigVec, axis=1, ord=2)
+    Y = (eigVec.T /rows_norm).T
 
     if args.custom:
         print('Running custom kmeans')
@@ -116,36 +114,36 @@ def spectral_clustering(A):
 
 
 # Drawing the graph. CAUTION: it takes too much time to execute
-def draw(G,y_hat):
+def draw(G, y_hat):
     print('Starting to draw')
-    """
-    colors = ['c','m','y','b','w']
+    colors = ['c','m','y','b','w','r','v']
     color_map= []
     for i,node in enumerate(G):
         color_map.append(colors[y_hat[i]])
+    
+    # Circular graph
     plt.figure()
     nx.draw_circular(G, with_labels=False, node_size=2, node_color=color_map, linewidth=0.1, alpha=0.1)
     plt.savefig(args.file[:-4]+'_circular_graph_colormap.pdf')
     plt.close()
     plt.figure()
+
+    # Kamada Kawai
     nx.draw_kamada_kawai(G, with_labels=False,node_color=color_map, node_size=1, linewidth=0, alpha=1)
     plt.savefig(args.file[:-4]+'_kamada_kawai_graph_colormap.pdf')
     plt.close()
-    print('Without edges')
+    
+    # Spring w/o edges
     plt.figure()
     nx.draw_networkx_nodes(G,pos=nx.spring_layout(G), alpha=1, node_color=color_map,with_labels=False, node_size=1)
     plt.savefig(args.file[:-4]+'_spring_only_nodes_graph.pdf')
     plt.close()
-    """
+    
+    # Spring
     plt.figure(figsize=(20.6,11.6))
     nx.draw_spring(G, with_labels=False, node_color='blue', node_size=1, lidewidth=0.1, alpha=0.1)
     plt.savefig(args.file[:-4]+'_spring_only_nodes_graph.png', dpi=900)
     plt.close()
-
-# Prints information about the graph
-def print_info(G):
-    print('Number of nodes: {}'.format(len(G)))
-    print('Number of edges: {}'.format(G.size()))
 
 
 
@@ -162,8 +160,7 @@ def laplacian_matrix(A):
 
 # Computes the two(k) smallest(SM) eigenvalues and eigenvectors 
 def get_eig_laplacian(A):
-    return eigsh(laplacian_matrix(A), k=args.k+1, which='SM')
-
+    return eigsh(laplacian_matrix(A), k=args.k, which='SM')
 
 
 # Writes the result to a file TO BE COMPLETED
@@ -180,15 +177,14 @@ def main():
     G = nx.read_edgelist(f)
     f.close()
 
-    print_info(G)
     A = nx.to_numpy_matrix(G) #adjacency matrix
+    
     print('Starting the algorithm')
-    y_hat=[1]
-    #y_hat = spectral_clustering(A)
-    #score = score_clustering(A,y_hat)
-    #print('Score of the partition: {}'.format(score))
-    #write_result(y_hat)
-    draw(G, y_hat)
+    y_hat = spectral_clustering(A)
+    score = score_clustering(A,y_hat)
+    
+    print('Score of the partition: {}'.format(score))
+    write_result(y_hat)
 
 
 if __name__ == '__main__':
