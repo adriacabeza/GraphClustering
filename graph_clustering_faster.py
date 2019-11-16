@@ -1,15 +1,16 @@
 from __future__ import division
+from graph_tool.all import *
+
 
 import argparse
 import random
 
-import networkx as nx
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
 
 from tqdm import tqdm
-from sklearn.manifold import TSNE
+from scipy.sparse.csgraph import laplacian
 from scipy.sparse.linalg import eigsh
 from mpl_toolkits.mplot3d import Axes3D #to make scatter plots in 3D
 from pyclustering.cluster.encoder import type_encoding, cluster_encoder
@@ -23,32 +24,27 @@ from scipy.cluster.vq import kmeans as scipy_kmeans
 parser = argparse.ArgumentParser()
 parser.add_argument('--file', type=str, default='./data/Oregon-1.txt', help="PATH_OF_THE_FILE")
 parser.add_argument('--custom', default=False, type=lambda x: (str(x).lower() == 'true'), help="CUSTOM_K_MEANS_BOOLEAN")
-parser.add_argument('--hops', default=1, type=int, help='Number of hops implied')
 parser.add_argument('--random', default=True, type=lambda x: (str(x).lower() == 'true'), help="RANDOM_CENTERS_BOOLEAN")
-parser.add_argument('--normalizeLaplacian', default=True, type=lambda x: (str(x).lower() == 'true'), help="NORMALIZED_LAPLACIAN_BOOLEAN")
+parser.add_argument('--normalizedLaplacian', default=True, type=lambda x: (str(x).lower() == 'true'), help="NORMALIZED_LAPLACIAN_BOOLEAN")
 parser.add_argument('--k', type=int, default=5, help="NUMBER_OF_CLUSTERS")
 args = parser.parse_args()
 
 
-# Draw the eigenvectors embedding to a 2D plane or a 3D plane if it was 3 eigenvectors
-def draw_eigenvectors(data, y_hat):
-    # Dimension Reduction TSNE technique when the data is multidimensional
-    if args.k > 3:
-        tsne = TSNE(n_components=2, random_state=0) # n_components= number of dimensions
-        data = tsne.fit_transform(data)
-
-    colormap = np.array(['coral', 'lightblue', 'r', 'g','b'])
-    if args.k == 3:
-        fig = plt.figure(figsize=(6, 5))
-        ax = fig.add_subplot(111, projection='3d') # for 3d
-        for i,y in enumerate(data3d): 
-            ax.scatter(y[0], y[1], y[2], color=colormap[y_hat[i]])
-        plt.show()
-    else: 
-        fig, ax = plt.subplots()
-        for i,y in enumerate(data): 
-            ax.scatter(y[0], y[1], color=colormap[y_hat[i]])
-        plt.show()
+# Reads the graph
+def read_graph(G):
+    num_lines = sum([1 if line[0] != '#' else 0  for line in open(args.file)])
+    v = set()
+    print('Reading graph')
+    with open(args.file) as f:
+        for line in tqdm(f, total=num_lines):
+            if line[0] == '#':
+                #It is a comment, skipping line
+                pass
+            else:
+                values = line.split()
+                (u, v) = tuple(values)
+                G.add_edge(u, v) 
+    print('Finished reading graph')
 
 
 # Score our partitions
@@ -90,11 +86,11 @@ def custom_kmeans(data, tolerance=0.25, ccore=False):
 
 
 # Spectral clustering algorithm using K-means 
-def spectral_clustering(A):
-    n = np.shape(A)[0]
-    eigVal, eigVec = get_eig_laplacian(A)
+def spectral_clustering(G):
+    n = np.shape(G.get_vertices())[0]
+    eigVal, eigVec = get_eig_laplacian(G)
 
-    #Y = np.delete(eigVec, 0, axis=1) # maybe it makes sense to delete the first eigenvector which is trivial
+    #Y = np.delete(eigVec, 0, axis=1) # maybe it makes sense to delete the first eigenvector 
     
     rows_norm = LA.norm(eigVec, axis=1, ord=2)
     Y = (eigVec.T /rows_norm).T
@@ -114,54 +110,11 @@ def spectral_clustering(A):
         return y_hat
 
 
-# Drawing the graph. CAUTION: it takes too much time to execute
-def draw(G, y_hat):
-    print('Starting to draw')
-    colors = ['c','m','y','b','w','r','v']
-    color_map= []
-    for i,node in enumerate(G):
-        color_map.append(colors[y_hat[i]])
-    
-    # Circular graph
-    plt.figure()
-    nx.draw_circular(G, with_labels=False, node_size=2, node_color=color_map, linewidth=0.1, alpha=0.1)
-    plt.savefig(args.file[:-4]+'_circular_graph_colormap.pdf')
-    plt.close()
-    plt.figure()
-
-    # Kamada Kawai
-    nx.draw_kamada_kawai(G, with_labels=False,node_color=color_map, node_size=1, linewidth=0, alpha=1)
-    plt.savefig(args.file[:-4]+'_kamada_kawai_graph_colormap.pdf')
-    plt.close()
-    
-    # Spring w/o edges
-    plt.figure()
-    nx.draw_networkx_nodes(G,pos=nx.spring_layout(G), alpha=1, node_color=color_map,with_labels=False, node_size=1)
-    plt.savefig(args.file[:-4]+'_spring_only_nodes_graph.pdf')
-    plt.close()
-    
-    # Spring
-    plt.figure(figsize=(20.6,11.6))
-    nx.draw_spring(G, with_labels=False, node_color='blue', node_size=1, lidewidth=0.1, alpha=0.1)
-    plt.savefig(args.file[:-4]+'_spring_only_nodes_graph.png', dpi=900)
-    plt.close()
-
-
-
-# Returns the symmetric normalized Laplacian matrix of a given graph
-def laplacian_matrix(A):
-    n = np.shape(A)[0]
-    if args.normalizeLaplacian:
-        D = np.diag(1 / np.sqrt(np.ravel(A.sum(axis=0))))
-    else:
-        D = np.diag(1/ np.ravel(A.sum(axis=0)))
-    return  np.identity(n) - D.dot(A).dot(D) 
-
-
 
 # Computes the two(k) smallest(SM) eigenvalues and eigenvectors 
-def get_eig_laplacian(A):
-    return eigsh(laplacian_matrix(A), k=args.k, which='SM')
+def get_eig_laplacian(G):
+    return eigsh(laplacian(G, normalized=args.normalizedLaplacian).todense(), k=args.k, which='SM')
+
 
 
 # Writes the result to a file TO BE COMPLETED
@@ -172,18 +125,15 @@ def write_result(labels):
             f.write('\t'+str(l)) 
     
 
+
 # Main function
 def main():
-    f = open(args.file, 'rb')
-    G = nx.read_edgelist(f)
-    f.close()
-
-    A = nx.to_numpy_matrix(G) #adjacency matrix
-    A = LA.matrix_power(A,args.hops) 
+    G = Graph(directed=False)
+    read_graph(G)
     
     print('Starting the algorithm')
-    y_hat = spectral_clustering(A)
-    score = score_clustering(A,y_hat)
+    y_hat = spectral_clustering(G)
+    score = score_clustering(adjacency(G).toarray(), y_hat)
     
     print('Score of the partition: {}'.format(score))
     write_result(y_hat)

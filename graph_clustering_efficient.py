@@ -1,15 +1,14 @@
 from __future__ import division
-from graph_tool.all import *
-
 
 import argparse
 import random
-
+import snap
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
 
 from tqdm import tqdm
+from scipy.sparse.csgraph import laplacian
 from scipy.sparse.linalg import eigsh
 from mpl_toolkits.mplot3d import Axes3D #to make scatter plots in 3D
 from pyclustering.cluster.encoder import type_encoding, cluster_encoder
@@ -29,38 +28,10 @@ parser.add_argument('--k', type=int, default=5, help="NUMBER_OF_CLUSTERS")
 args = parser.parse_args()
 
 
-# Reads the graph
-def read_graph(G):
-    num_lines = sum([1 if line[0] != '#' else 0  for line in open(args.file)])
-    v = set()
-    print('Reading graph')
-    with open(args.file) as f:
-        for line in tqdm(f, total=num_lines):
-            if line[0] == '#':
-                #It is a comment, skipping line
-                pass
-            else:
-                values = line.split()
-                (u, v) = tuple(values)
-                G.add_edge(u, v) 
-    print('Finished reading graph')
-
-
 # Score our partitions
 def score_clustering(A, y_hat):
     print('Starting to calculate score')
     total = 0
-    for i in range(args.k):
-        v_isize = (y_hat == i).sum() # size of the cluster i
-        print('Starting to check cluster {} of size {}'.format(i, v_isize))
-        count = 0
-        for index,j in enumerate(y_hat):
-            if j == i:
-                # it means we are in a vertex that is inside the cluster i, let's check the number of edges to another clusters
-                for k in range(A.shape[1]):
-                    if A.item((index,k)) and  y_hat[k] != i: # if there is an edge and those clusters are different
-                        count += 1
-        total += count/v_isize
     return total
 
 
@@ -86,13 +57,13 @@ def custom_kmeans(data, tolerance=0.25, ccore=False):
 
 # Spectral clustering algorithm using K-means 
 def spectral_clustering(G):
-    n = np.shape(G.get_vertices())[0]
-    eigVal, eigVec = get_eig_laplacian(G)
-
+    n = G.GetNodes()
+    eigVec = get_eigenvectors(G)
+    eigVectors = np.array([float(x) for x in eigVec])
     #Y = np.delete(eigVec, 0, axis=1) # maybe it makes sense to delete the first eigenvector 
-    
-    rows_norm = LA.norm(eigVec, axis=1, ord=2)
-    Y = (eigVec.T /rows_norm).T
+    print(eigVectors) 
+    rows_norm = LA.norm(eigVectors, ord=2)
+    Y = (eigVectors.T /rows_norm).T
 
     if args.custom:
         print('Running custom kmeans')
@@ -109,34 +80,71 @@ def spectral_clustering(G):
         return y_hat
 
 
+# Computes eigenvectors
+def get_eigenvectors(G):
+    EigVec = snap.TFltV()
+    snap.GetEigVec(G, EigVec)
+    return EigVec
 
-# Computes the two(k) smallest(SM) eigenvalues and eigenvectors 
-def get_eig_laplacian(G):
-    return eigsh(laplacian(G, normalized=args.normalizedLaplacian).todense(), k=args.k, which='SM')
+
+# Writes the result to a file
+def write_result(G, labels):
+    i = 0
+    with open(args.file[:-4]+'_result.txt','w') as f:
+        for node in G.nodes():
+            f.write(str(node.GetId()) +'\t'+str(labels[i]))
+            i += 1
 
 
-
-# Writes the result to a file TO BE COMPLETED
-def write_result(labels):
-    print('Results: {}'.format(labels))
-    with open(args.file+'_result.txt','w') as f:
-        for i,l in enumerate(labels):
-            f.write('\t'+str(l)) 
+# Computes modularity in several ways
+def modularity(G):
+    print('Clauset-Newman-Moore community detection method for large networks')
+    CmtyV = snap.TCnComV()
+    modularity = snap.CommunityCNM(G, CmtyV)
+    for Cmty in CmtyV:
+        print('Community:')
+        for NI in Cmty:
+            print(NI)
+    print('Clauset-Newman-Moore community modularity of the network: {}'.format(modularity))
     
+    print('Girvan-Newman community detection algorithm based on betweeness on Graph')
+    CmtyV = snap.TCnComV()
+    modularity = snap.CommunityGirvanNewman(G, CmtyV)
+    for Cmty in CmtyV:
+        print('Community:')
+        for NI in Cmty:
+            print(NI)
+    print('Girvan-Newman community modularity of the network: {}'.format(modularity))
+
+
+
+##################################
+#  LET'S PRINT SOME INFORMATION  #
+##################################
+def print_info(G):
+    print('Clustering coefficient: {}'.format(snap.GetClustCf(G)))
+    print('Degree histogram')
+    DegToCntV = snap.TIntPrV()
+    snap.GetDegCnt(G, DegToCntV)
+    fig, ax = plt.subplots()
+    for i,item in enumerate(DegToCntV):
+        ax.bar(int(item.GetVal2()),int(item.GetVal1()), width=30, color='orange')
+        if i < 5 or i % 10 == 0:
+            ax.text(int(item.GetVal2()),int(item.GetVal1()),str(item.GetVal1()))
+    ax.set_yscale('log')
+    plt.title('Degree distribution')
+    plt.show()
+    snap.PrintInfo(G,"Information of {}".format(args.file[:-4]))
+
+
 
 
 # Main function
 def main():
-    G = Graph(directed=False)
-    read_graph(G)
-    
+    G = snap.LoadEdgeList(snap.PUNGraph, args.file ,0,1)
     print('Starting the algorithm')
-    y_hat = spectral_clustering(G)
-    score = score_clustering(adjacency(G).toarray(), y_hat)
-    
-    print('Score of the partition: {}'.format(score))
-    write_result(y_hat)
-
+    y_hat = spectral_clustering(G) 
+    write_result(G,y_hat)
 
 if __name__ == '__main__':
     main()

@@ -49,7 +49,7 @@ Usage of [virtualenv](https://realpython.com/blog/python/python-virtual-environm
 ### Usage
 
 - Install dependencies
-	- Install graph-tool
+	- Install graph-tool (for the faster version)
 ```bash
 pip install -r requirements.txt
 ```
