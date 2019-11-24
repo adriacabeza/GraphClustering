@@ -86,14 +86,16 @@ def score_clustering(A, y_hat):
 
 
 # Faster and more customizable kmeans using pyclustering
-def custom_kmeans(data, tolerance= 0.001, ccore=True):
+def custom_kmeans(data, tolerance= 0.01, ccore=True):
     if args.random:
         centers = [ [ random.random() for _ in range(args.k) ] for _ in range(args.k) ] #Random center points
     else:
         centers = kmeans_plusplus_initializer(data, args.k).initialize()
     print("number centers", len(centers))
     dimension = len(data[0])
-    metric = distance_metric(type_metric.EUCLIDEAN) # WE CAN USE OUR DEFINED METRIC TOO
+    metric = distance_metric(type_metric.MINKOWSKI, degree=50) # WE CAN USE OUR DEFINED METRIC TOO
+    #metric = distance_metric(type_metric.CHEBYSHEV) # WE CAN USE OUR DEFINED METRIC TOO
+    #metric = distance_metric(type_metric.EUCLIDEAN) # WE CAN USE OUR DEFINED METRIC TOO
     observer = kmeans_observer()
     kmeans_instance = kmeans(data, centers, ccore, tolerance, observer=observer, metric=metric)
     kmeans_instance.process()
@@ -112,10 +114,11 @@ def spectral_clustering(G):
     n = len(G)
     eigVal, eigVec = get_eig_laplacian(G)
 
-    #Y = np.delete(eigVec, 0, axis=1) # maybe it makes sense to delete the first eigenvector which is trivial
+    #eigVec = np.delete(eigVec, 0, axis=1) # maybe it makes sense to delete the first eigenvector which is trivial
     
     rows_norm = LA.norm(eigVec, axis=1, ord=2)
     Y = (eigVec.T /rows_norm).T
+
 
     if args.custom:
         print('Running custom kmeans')
