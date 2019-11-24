@@ -41,7 +41,7 @@ def custom_kmeans(data, tolerance=0.25, ccore=False):
         centers = [ [ random.random() for _ in range(args.k) ] for _ in range(args.k) ] #Random center points
     else:
         centers = kmeans_plusplus_initializer(data, args.k).initialize()
-    dimension = len(data[0])
+    dimension = data.shape[0]
     metric = distance_metric(type_metric.EUCLIDEAN) # WE CAN USE OUR DEFINED METRIC TOO
     observer = kmeans_observer()
     kmeans_instance = kmeans(data, centers, tolerance, ccore, observer=observer, metric=metric)
@@ -59,12 +59,19 @@ def custom_kmeans(data, tolerance=0.25, ccore=False):
 def spectral_clustering(G):
     n = G.GetNodes()
     eigVec = get_eigenvectors(G)
-    eigVectors = np.array([float(x) for x in eigVec])
-    #Y = np.delete(eigVec, 0, axis=1) # maybe it makes sense to delete the first eigenvector 
-    print(eigVectors) 
+    i = 0
+    eigVectors = list()
+    for item in eigVec:
+        if i == args.k:
+            break
+        else:
+            i += 1
+            eigVectors.append(item)
+    
+    eigVectors = np.array(eigVectors)
     rows_norm = LA.norm(eigVectors, ord=2)
-    Y = (eigVectors.T /rows_norm).T
-
+    Y = (eigVectors.T /rows_norm)
+    
     if args.custom:
         print('Running custom kmeans')
         return custom_kmeans(Y) 
@@ -82,18 +89,17 @@ def spectral_clustering(G):
 
 # Computes eigenvectors
 def get_eigenvectors(G):
-    EigVec = snap.TFltV()
-    snap.GetEigVec(G, EigVec)
-    return EigVec
+    EigVecV = snap.TFltVFltV() 
+    EigValV = snap.TFltV()
+    snap.GetEigVec(G,args.k, EigValV, EigVecV) 
+    return EigVecV
 
 
 # Writes the result to a file
 def write_result(G, labels):
-    i = 0
     with open(args.file[:-4]+'_result.txt','w') as f:
-        for node in G.Nodes():
+        for i,node in enumerate(G.Nodes()):
             f.write(str(node.GetId()) +'\t'+str(labels[i]))
-            i += 1
 
 
 # Computes modularity in several ways
@@ -144,6 +150,7 @@ def main():
     G = snap.LoadEdgeList(snap.PUNGraph, args.file ,0,1)
     print('Starting the algorithm')
     y_hat = spectral_clustering(G) 
+    print('Writing the results')
     write_result(G,y_hat)
 
 if __name__ == '__main__':

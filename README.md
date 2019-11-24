@@ -48,6 +48,12 @@ Usage of [virtualenv](https://realpython.com/blog/python/python-virtual-environm
 
 ### Usage
 
+Now we have three different documents:
+- Graph Clustering: which uses networkx, a library written in Python with K-way Spectral Algorithm implemented and fancy drawing stuff.
+- Graph Clustering faster: which uses graph tool which it is written in C++ so it should be faster and more efficient, with K-way Spectral Algorithm implemented. 
+- **Graph Clustering efficent**: after trying to do the largest graphs with the other two versions (failing), I realized that if we want to be able to process web-NotreDame or roadNet-CA we have to use SNAP library prepared to work with large networks, with nothing implemented because I do not even know how to get the Laplacian. To work with this one only the requirements.txt is needed. 
+
+
 - Install dependencies
 	- Install graph-tool (for the faster version)
 ```bash
