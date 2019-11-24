@@ -203,7 +203,8 @@ def get_eig_laplacian(G):
 
 # Writes the result to a file TO BE COMPLETED
 def write_result(G, labels):
-    with open(args.file+'_result.txt','w') as f:
+    with open(args.file[:-4]+'.output','w') as f:
+        f.write("# graphID numOfVertices numOfEdges k")
         for node in G.nodes(): #prova
             f.write(f"{node} {labels[node]}\n")
 
