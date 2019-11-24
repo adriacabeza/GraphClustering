@@ -15,6 +15,7 @@ from mpl_toolkits.mplot3d import Axes3D #to make scatter plots in 3D
 from pyclustering.cluster.encoder import type_encoding, cluster_encoder
 from pyclustering.utils.metric import distance_metric, type_metric
 from pyclustering.cluster.kmeans import kmeans, kmeans_observer
+from pyclustering.cluster.agglomerative import agglomerative, type_link
 from pyclustering.cluster.center_initializer import kmeans_plusplus_initializer
 
 from numpy import linalg as LA
@@ -87,20 +88,28 @@ def score_clustering(A, y_hat):
 
 # Faster and more customizable kmeans using pyclustering
 def custom_kmeans(data, tolerance= 0.01, ccore=True):
-    if args.random:
+    """if args.random:
         centers = [ [ random.random() for _ in range(args.k) ] for _ in range(args.k) ] #Random center points
     else:
         centers = kmeans_plusplus_initializer(data, args.k).initialize()
     print("number centers", len(centers))
     dimension = len(data[0])
-    metric = distance_metric(type_metric.MINKOWSKI, degree=50) # WE CAN USE OUR DEFINED METRIC TOO
+    #metric = distance_metric(type_metric.MINKOWSKI, degree=50) # WE CAN USE OUR DEFINED METRIC TOO
     #metric = distance_metric(type_metric.CHEBYSHEV) # WE CAN USE OUR DEFINED METRIC TOO
     #metric = distance_metric(type_metric.EUCLIDEAN) # WE CAN USE OUR DEFINED METRIC TOO
-    observer = kmeans_observer()
-    kmeans_instance = kmeans(data, centers, ccore, tolerance, observer=observer, metric=metric)
-    kmeans_instance.process()
-    clusters = kmeans_instance.get_clusters()
-    type_repr = kmeans_instance.get_cluster_encoding();
+    #observer = kmeans_observer()
+    #kmeans_instance = kmeans(data, centers, ccore, tolerance, observer=observer, metric=metric)
+    #kmeans_instance.process()
+    #clusters = kmeans_instance.get_clusters()
+    """
+    # create instance of the algorithm that will use ccore library (the last argument)
+    agglomerative_instance = agglomerative(data, args.k, type_link.SINGLE_LINK, True)
+# start processing
+    agglomerative_instance.process()
+    # get result and visualize it
+    clusters = agglomerative_instance.get_clusters()
+    #type_repr = kmeans_instance.get_cluster_encoding();
+    type_repr = agglomerative_instance.get_cluster_encoding();
     encoder = cluster_encoder(type_repr, clusters, data);
     # change representation from index list to label list
     encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING);
@@ -196,7 +205,7 @@ def get_eig_laplacian(G):
 def write_result(G, labels):
     with open(args.file+'_result.txt','w') as f:
         for node in G.nodes(): #prova
-            f.write(f"{node}:{labels[node]}\n")
+            f.write(f"{node} {labels[node]}\n")
 
 
 # Main function
