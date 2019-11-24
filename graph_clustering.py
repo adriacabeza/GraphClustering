@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--file', type=str, default='./data/Oregon-1.txt', help="PATH_OF_THE_FILE")
 parser.add_argument('--custom', default=False, type=lambda x: (str(x).lower() == 'true'), help="CUSTOM_K_MEANS_BOOLEAN")
 parser.add_argument('--hops', default=1, type=int, help='Number of hops implied')
-parser.add_argument('--random', default=True, type=lambda x: (str(x).lower() == 'true'), help="RANDOM_CENTERS_BOOLEAN")
+parser.add_argument('--random', default=False , type=lambda x: (str(x).lower() == 'true'), help="RANDOM_CENTERS_BOOLEAN")
 parser.add_argument('--normalizeLaplacian', default=True, type=lambda x: (str(x).lower() == 'true'), help="NORMALIZED_LAPLACIAN_BOOLEAN")
 parser.add_argument('--k', type=int, default=5, help="NUMBER_OF_CLUSTERS")
 args = parser.parse_args()
@@ -51,7 +51,24 @@ def draw_eigenvectors(data, y_hat):
         plt.show()
 
 
-# Score our partitions
+def score_clustering_graph(G, y_hat):
+    print('Starting to calculate score')
+    total = 0
+    for i in range(args.k):
+        v_isize = len([x for x in y_hat.items() if x[1] == i])  # size of the cluster i
+        print('Starting to check cluster {} of size {}'.format(i, v_isize))
+        count = 0
+        for key,value in y_hat.items():
+             if value == i:
+             # it means we are in a vertex that is inside the cluster i, let's check the number of edges to another clusters
+                for k in G.neighbors(key):
+                    if y_hat[k] != i:
+                        count += 1
+        total += count/v_isize
+    return total 
+
+
+# Score our partitions using Adjacency Matrix
 def score_clustering(A, y_hat):
     print('Starting to calculate score')
     total = 0
@@ -70,15 +87,16 @@ def score_clustering(A, y_hat):
 
 
 # Faster and more customizable kmeans using pyclustering
-def custom_kmeans(data, tolerance=0.25, ccore=False):
+def custom_kmeans(data, tolerance= 0.001, ccore=True):
     if args.random:
         centers = [ [ random.random() for _ in range(args.k) ] for _ in range(args.k) ] #Random center points
     else:
         centers = kmeans_plusplus_initializer(data, args.k).initialize()
+    print("number centers", len(centers))
     dimension = len(data[0])
     metric = distance_metric(type_metric.EUCLIDEAN) # WE CAN USE OUR DEFINED METRIC TOO
     observer = kmeans_observer()
-    kmeans_instance = kmeans(data, centers, tolerance, ccore, observer=observer, metric=metric)
+    kmeans_instance = kmeans(data, centers, ccore, tolerance, observer=observer, metric=metric)
     kmeans_instance.process()
     clusters = kmeans_instance.get_clusters()
     type_repr = kmeans_instance.get_cluster_encoding();
@@ -86,13 +104,14 @@ def custom_kmeans(data, tolerance=0.25, ccore=False):
     # change representation from index list to label list
     encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING);
     clusters = encoder.get_clusters()
+    print(clusters)
     return clusters
 
 
 # Spectral clustering algorithm using K-means 
-def spectral_clustering(A):
-    n = np.shape(A)[0]
-    eigVal, eigVec = get_eig_laplacian(A)
+def spectral_clustering(G):
+    n = len(G)
+    eigVal, eigVec = get_eig_laplacian(G)
 
     #Y = np.delete(eigVec, 0, axis=1) # maybe it makes sense to delete the first eigenvector which is trivial
     
@@ -101,16 +120,23 @@ def spectral_clustering(A):
 
     if args.custom:
         print('Running custom kmeans')
-        return custom_kmeans(Y) 
+        y_hat = dict()
+        labels = custom_kmeans(Y) 
+        for i,node in enumerate(G.nodes()):
+            y_hat[node]= labels[i]
+        return y_hat
     else:
         print('Running euclidean kmeans')
         centroids, distortion = scipy_kmeans(Y,args.k) 
 
         # creating output label vector
-        y_hat = np.zeros(n, dtype=int)
-        for i in range(n):
+        #y_hat = np.zeros(n, dtype=int)
+
+        # creating output dictionary label vector
+        y_hat = dict()
+        for i, node in enumerate(G.nodes()):
             dists = np.array([np.linalg.norm(Y[i] - centroids[c]) for c in range(args.k)])
-            y_hat[i] = np.argmin(dists)
+            y_hat[node] = np.argmin(dists)
         return y_hat
 
 
@@ -159,18 +185,17 @@ def laplacian_matrix(A):
 
 
 
-# Computes the two(k) smallest(SM) eigenvalues and eigenvectors 
-def get_eig_laplacian(A):
-    return eigsh(laplacian_matrix(A), k=args.k, which='SM')
+# Computes the two(k) smallest(SM) eigenvalues and eigenvectors if we want to do largest magnitude (LM) 
+def get_eig_laplacian(G):
+    return eigsh(nx.normalized_laplacian_matrix(G), k=args.k, which='SM')
 
 
 # Writes the result to a file TO BE COMPLETED
-def write_result(labels):
-    print('Results: {}'.format(labels))
+def write_result(G, labels):
     with open(args.file+'_result.txt','w') as f:
-        for i,l in enumerate(labels):
-            f.write('\t'+str(l)) 
-    
+        for node in G.nodes(): #prova
+            f.write(f"{node}:{labels[node]}\n")
+
 
 # Main function
 def main():
@@ -178,15 +203,15 @@ def main():
     G = nx.read_edgelist(f)
     f.close()
 
-    A = nx.to_numpy_matrix(G) #adjacency matrix
-    A = LA.matrix_power(A,args.hops) 
-    
+    #A = nx.to_numpy_matrix(G) #adjacency matrix
+
     print('Starting the algorithm')
-    y_hat = spectral_clustering(A)
-    score = score_clustering(A,y_hat)
-    
+    y_hat = spectral_clustering(G)
+    #score = score_clustering(G,y_hat)
+    score = score_clustering_graph(G, y_hat)
+
     print('Score of the partition: {}'.format(score))
-    write_result(y_hat)
+    write_result(G,y_hat)
 
 
 if __name__ == '__main__':
