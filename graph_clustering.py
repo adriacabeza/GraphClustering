@@ -94,7 +94,7 @@ def custom_kmeans(data, tolerance= 0.01, ccore=True):
         centers = kmeans_plusplus_initializer(data, args.k).initialize()
     print("number centers", len(centers))
     dimension = len(data[0])
-    metric = distance_metric(type_metric.MINKOWSKI, degree=30) # WE CAN USE OUR DEFINED METRIC TOO
+    metric = distance_metric(type_metric.MINKOWSKI, degree=50) # WE CAN USE OUR DEFINED METRIC TOO
     #metric = distance_metric(type_metric.CHEBYSHEV) # WE CAN USE OUR DEFINED METRIC TOO
     #metric = distance_metric(type_metric.EUCLIDEAN) # WE CAN USE OUR DEFINED METRIC TOO
     observer = kmeans_observer()
@@ -204,9 +204,13 @@ def get_eig_laplacian(G):
 # Writes the result to a file TO BE COMPLETED
 def write_result(G, labels,score):
     with open(args.file[:-4]+'_'+ str(score) +'.output','w') as f:
-        f.write("# graphID numOfVertices numOfEdges k")
+        f.write("# graphID numOfVertices numOfEdges k\n")
+        llista = list()
         for node in G.nodes(): #prova
-            f.write(f"{node} {labels[node]}\n")
+            llista.append((int(node), labels[node]))
+        llista.sort()
+        for i,j in llista:
+            f.write(f"{i} {j}\n")
 
 
 # Main function
