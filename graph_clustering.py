@@ -88,28 +88,28 @@ def score_clustering(A, y_hat):
 
 # Faster and more customizable kmeans using pyclustering
 def custom_kmeans(data, tolerance= 0.01, ccore=True):
-    """if args.random:
+    if args.random:
         centers = [ [ random.random() for _ in range(args.k) ] for _ in range(args.k) ] #Random center points
     else:
         centers = kmeans_plusplus_initializer(data, args.k).initialize()
     print("number centers", len(centers))
     dimension = len(data[0])
-    #metric = distance_metric(type_metric.MINKOWSKI, degree=50) # WE CAN USE OUR DEFINED METRIC TOO
+    metric = distance_metric(type_metric.MINKOWSKI, degree=30) # WE CAN USE OUR DEFINED METRIC TOO
     #metric = distance_metric(type_metric.CHEBYSHEV) # WE CAN USE OUR DEFINED METRIC TOO
     #metric = distance_metric(type_metric.EUCLIDEAN) # WE CAN USE OUR DEFINED METRIC TOO
-    #observer = kmeans_observer()
-    #kmeans_instance = kmeans(data, centers, ccore, tolerance, observer=observer, metric=metric)
-    #kmeans_instance.process()
-    #clusters = kmeans_instance.get_clusters()
-    """
+    observer = kmeans_observer()
+    kmeans_instance = kmeans(data, centers, ccore, tolerance, observer=observer, metric=metric)
+    kmeans_instance.process()
+    clusters = kmeans_instance.get_clusters()
+    
     # create instance of the algorithm that will use ccore library (the last argument)
-    agglomerative_instance = agglomerative(data, args.k, type_link.SINGLE_LINK, True)
-# start processing
-    agglomerative_instance.process()
+    #agglomerative_instance = agglomerative(data, args.k, type_link.SINGLE_LINK, True)
+    # start processing
+    #agglomerative_instance.process()
     # get result and visualize it
-    clusters = agglomerative_instance.get_clusters()
+    #clusters = agglomerative_instance.get_clusters()
     #type_repr = kmeans_instance.get_cluster_encoding();
-    type_repr = agglomerative_instance.get_cluster_encoding();
+    type_repr = kmeans_instance.get_cluster_encoding();
     encoder = cluster_encoder(type_repr, clusters, data);
     # change representation from index list to label list
     encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING);
@@ -202,8 +202,8 @@ def get_eig_laplacian(G):
 
 
 # Writes the result to a file TO BE COMPLETED
-def write_result(G, labels):
-    with open(args.file[:-4]+'.output','w') as f:
+def write_result(G, labels,score):
+    with open(args.file[:-4]+'_'+ str(score) +'.output','w') as f:
         f.write("# graphID numOfVertices numOfEdges k")
         for node in G.nodes(): #prova
             f.write(f"{node} {labels[node]}\n")
@@ -223,7 +223,7 @@ def main():
     score = score_clustering_graph(G, y_hat)
 
     print('Score of the partition: {}'.format(score))
-    write_result(G,y_hat)
+    write_result(G,y_hat, score)
 
 
 if __name__ == '__main__':
