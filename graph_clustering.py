@@ -1,47 +1,49 @@
-from __future__ import division
-
 import argparse
 import random
-
 import networkx as nx
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
-
-from tqdm import tqdm
-from sklearn.manifold import TSNE
 from scipy.sparse.linalg import eigsh
-from mpl_toolkits.mplot3d import Axes3D #to make scatter plots in 3D
+from numpy import linalg as LA;
+from scipy.cluster.vq import kmeans as scipy_kmeans;
+from pyclustering.cluster.fcm import fcm
+from pyclustering.cluster.xmeans import xmeans
 from pyclustering.cluster.encoder import type_encoding, cluster_encoder
 from pyclustering.utils.metric import distance_metric, type_metric
 from pyclustering.cluster.kmeans import kmeans, kmeans_observer
 from pyclustering.cluster.agglomerative import agglomerative, type_link
 from pyclustering.cluster.center_initializer import kmeans_plusplus_initializer
 
-from numpy import linalg as LA
-from scipy.cluster.vq import kmeans as scipy_kmeans
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--file', type=str, default='./data/Oregon-1.txt', help="PATH_OF_THE_FILE")
-parser.add_argument('--custom', default=False, type=lambda x: (str(x).lower() == 'true'), help="CUSTOM_K_MEANS_BOOLEAN")
-parser.add_argument('--random', default=True, type=lambda x: (str(x).lower() == 'true'), help="RANDOM_CENTERS_BOOLEAN")
-parser.add_argument('--normalizeLaplacian', default=True, type=lambda x: (str(x).lower() == 'true'), help="NORMALIZED_LAPLACIAN_BOOLEAN")
-parser.add_argument('--k', type=int, default=5, help="NUMBER_OF_CLUSTERS")
+parser.add_argument('--seed', type=int, default=1, help='Random seed.')
+parser.add_argument('--file', type=str, default='./data/Oregon-1.txt', help='Path of the input graph file.')
+parser.add_argument('--outputs_path', type=str, default='./results/', help='Path of the outputs.')
+parser.add_argument('--clustering', default='kmeans', type=str, help='Use "kmeans", "custom_kmeans", "xmeans", "fuzzy" or "agglomerative".')
+parser.add_argument('--random_centroids', default=True, type=bool, help='Random KMeans centroids initialization.')
+parser.add_argument('--distance_metric', default='EUCLIDEAN', type=str, help='Distance metric: "MINKOWSKI", "CHEBYSHEV", "EUCLIDEAN".')
+parser.add_argument('--k', type=int, default=5, help='Number of desired clusters.')
+parser.add_argument('--eig_kept', type=int, default=None, help='Number of eigen vectors kept.')
+parser.add_argument('--eig_normalization', type=str, default='vertex', help='Normalization of eigen vectors by "vertex", "eig" or "None".')
 args = parser.parse_args()
+
+
+if args.eig_kept is None:
+    args.eig_kept = args.k
 
 
 # Draw the eigenvectors embedding to a 2D plane or a 3D plane if it was 3 eigenvectors
 def draw_eigenvectors(data, y_hat):
     # Dimension Reduction TSNE technique when the data is multidimensional
     if args.k > 3:
-        tsne = TSNE(n_components=2, random_state=0) # n_components= number of dimensions
+        tsne = TSNE(n_components=2, random_state=args.seed) # n_components= number of dimensions
         data = tsne.fit_transform(data)
-
     colormap = np.array(['coral', 'lightblue', 'r', 'g','b'])
     if args.k == 3:
         fig = plt.figure(figsize=(6, 5))
         ax = fig.add_subplot(111, projection='3d') # for 3d
-        for i,y in enumerate(data3d): 
+        for i,y in enumerate(data3d):
             ax.scatter(y[0], y[1], y[2], color=colormap[y_hat[i]])
         plt.show()
     else: 
@@ -51,104 +53,151 @@ def draw_eigenvectors(data, y_hat):
         plt.show()
 
 
+# Score our partitions using a graph and its cluster
 def score_clustering_graph(G, y_hat):
-    print('Starting to calculate score')
+    print('[*] Starting to calculate score.')
     total = 0
     for i in range(args.k):
-        v_isize = len([x for x in y_hat.items() if x[1] == i])  # size of the cluster i
-        print('Starting to check cluster {} of size {}'.format(i, v_isize))
+        v_isize = len([x for x in y_hat.items() if x[1]==i])  # Size of the cluster i
+        print('[*] Starting to check cluster {} of size {}'.format(i, v_isize))
+        if v_isize==0:
+            continue
         count = 0
-        for key,value in y_hat.items():
-             if value == i:
-             # it means we are in a vertex that is inside the cluster i, let's check the number of edges to another clusters
-                for k in G.neighbors(key):
-                    if y_hat[k] != i:
-                        count += 1
-        total += count/v_isize
-    return total 
-
-
-# Score our partitions using Adjacency Matrix
-def score_clustering(A, y_hat):
-    print('Starting to calculate score')
-    total = 0
-    for i in range(args.k):
-        v_isize = (y_hat == i).sum() # size of the cluster i
-        print('Starting to check cluster {} of size {}'.format(i, v_isize))
-        count = 0
-        for index,j in enumerate(y_hat):
-            if j == i:
-                # it means we are in a vertex that is inside the cluster i, let's check the number of edges to another clusters
-                for k in range(A.shape[1]):
-                    if A.item((index,k)) and  y_hat[k] != i: # if there is an edge and those clusters are different
+        for vertex_ID, cluster in y_hat.items():
+            if cluster==i: # It means we are in a vertex that is inside the cluster i, let's check the number of edges to another clusters
+                for neighbor_vertex_ID in G.neighbors(vertex_ID):
+                    if y_hat[neighbor_vertex_ID]!=i:
                         count += 1
         total += count/v_isize
     return total
 
 
 # Faster and more customizable kmeans using pyclustering
-def custom_kmeans(data, tolerance= 0.01, ccore=True):
-    if args.random:
-        centers = [ [ random.random() for _ in range(args.k) ] for _ in range(args.k) ] #Random center points
+def custom_kmeans(data, k, tolerance= 0.01, ccore=True):
+    # Centroids initalization
+    if args.random_centroids:
+        random.seed(args.seed)
+        centers = [[random.random() for _ in range(data.shape[1])] for _ in range(k)]
     else:
-        centers = kmeans_plusplus_initializer(data, args.k).initialize()
-    print("number centers", len(centers))
-    dimension = len(data[0])
-    metric = distance_metric(type_metric.MINKOWSKI, degree=50) # WE CAN USE OUR DEFINED METRIC TOO
-    #metric = distance_metric(type_metric.CHEBYSHEV) # WE CAN USE OUR DEFINED METRIC TOO
-    #metric = distance_metric(type_metric.EUCLIDEAN) # WE CAN USE OUR DEFINED METRIC TOO
+        centers = kmeans_plusplus_initializer(data, k, seed=1).initialize()
+
+    # Distance metric definition
+    if args.distance_metric=='MINKOWSKI':
+        metric = distance_metric(type_metric.MINKOWSKI, degree=50)
+    if args.distance_metric=='CHEBYSHEV':
+        metric = distance_metric(type_metric.CHEBYSHEV)
+    if args.distance_metric=='EUCLIDEAN':
+        metric = distance_metric(type_metric.EUCLIDEAN)
+
+    # Clustering
     observer = kmeans_observer()
-    kmeans_instance = kmeans(data, centers, ccore, tolerance, observer=observer, metric=metric)
+    kmeans_instance = kmeans(data, centers, ccore, tolerance, observer=observer, metric=metric, seed=1) # Create instance of the algorithm
     kmeans_instance.process()
     clusters = kmeans_instance.get_clusters()
-    
-    # create instance of the algorithm that will use ccore library (the last argument)
-    #agglomerative_instance = agglomerative(data, args.k, type_link.SINGLE_LINK, True)
-    # start processing
-    #agglomerative_instance.process()
-    # get result and visualize it
-    #clusters = agglomerative_instance.get_clusters()
-    #type_repr = kmeans_instance.get_cluster_encoding();
-    type_repr = kmeans_instance.get_cluster_encoding();
-    encoder = cluster_encoder(type_repr, clusters, data);
-    # change representation from index list to label list
-    encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING);
+    type_repr = kmeans_instance.get_cluster_encoding()
+    encoder = cluster_encoder(type_repr, clusters, data)
+
+    # Change representation from index list to label list and return clusters
+    encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
     clusters = encoder.get_clusters()
-    print(clusters)
     return clusters
 
 
-# Spectral clustering algorithm using K-means 
+# Hierarchical agglomerative clustering
+def agglomerative_hierarchical(data, k, ccore=True):
+    # Clustering
+    agglomerative_instance = agglomerative(data, k, type_link.SINGLE_LINK, ccore) # Create instance of the algorithm
+    agglomerative_instance.process()
+    clusters = agglomerative_instance.get_clusters()
+    type_repr = agglomerative_instance.get_cluster_encoding()
+    encoder = cluster_encoder(type_repr, clusters, data)
+
+    # Change representation from index list to label list and return clusters
+    encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
+    return encoder.get_clusters()
+
+
+# Fuzzy means clustering
+def fuzzy_means(data, k, ccore=True):
+    initial_centers = kmeans_plusplus_initializer(data, k, kmeans_plusplus_initializer.FARTHEST_CENTER_CANDIDATE).initialize()
+    # create instance of Fuzzy C-Means algorithm
+    fcm_instance = fcm(data, initial_centers)
+    # run cluster analysis and obtain results
+    fcm_instance.process()
+    clusters = fcm_instance.get_clusters()
+    type_repr = kmeans_instance.get_cluster_encoding()
+    encoder = cluster_encoder(type_repr, clusters, data)
+
+    # Change representation from index list to label list and return clusters
+    encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
+    clusters = encoder.get_clusters()
+    return clusters
+
+
+# Xmeans clustering
+def xmeans(data, k, ccore=True):
+    # Prepare initial centers - amount of initial centers defines amount of clusters from which X-Means will
+    # start analysis.
+    initial_centers = kmeans_plusplus_initializer(data, k).initialize()
+    # Create instance of X-Means algorithm. The algorithm will start analysis from 2 clusters, the maximum
+    # number of clusters that can be allocated is 20.
+    xmeans_instance = xmeans(data, initial_centers, k)
+    xmeans_instance.process()
+    # Extract clustering results: clusters and their centers
+    clusters = xmeans_instance.get_clusters()
+    type_repr = kmeans_instance.get_cluster_encoding()
+    encoder = cluster_encoder(type_repr, clusters, data)
+
+    # Change representation from index list to label list and return clusters
+    encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
+    clusters = encoder.get_clusters()
+    return clusters
+
+
+# Computes the two(k) smallest(SM) eigenvalues and eigenvectors, if we want to do largest magnitude (LM) 
+def get_eig_laplacian(G):
+    return eigsh(nx.normalized_laplacian_matrix(G), k=args.eig_kept, which='SM')
+
+
+# Spectral clustering algorithm using args.clustering method
 def spectral_clustering(G):
-    n = len(G)
+    # Compute the eigen vectors of the graph
+    print('[*] Computing the eigen vectors.')
     eigVal, eigVec = get_eig_laplacian(G)
+    if args.eig_normalization=='vertex':
+        vertex_norm = LA.norm(eigVec, axis=1, ord=2)
+        Y = (eigVec.T/vertex_norm).T
+    elif args.eig_normalization=='eig':
+        eig_norm = LA.norm(eigVec, axis=0, ord=2)
+        Y = eigVec/eig_norm
+    elif args.eig_normalization=='None':
+        Y = eigVec
 
-    #eigVec = np.delete(eigVec, 0, axis=1) # maybe it makes sense to delete the first eigenvector which is trivial
+    # Cluster the eigen vectors of the graph
+    if args.clustering=='agglomerative':
+        print('[*] Running agglomerative hierarchical clustering.')
+        clusters = agglomerative_hierarchical(Y, args.k) 
+    elif args.clustering=='custom_kmeans':
+        print('[*] Running customized KMeans clustering.')
+        clusters = custom_kmeans(Y, args.k) 
+    elif args.clustering=='kmeans':
+        print('[*] Running KMeans Euclidean clustering.')
+        centroids, distortion = scipy_kmeans(Y, args.k) 
+    elif args.clustering=='xmeans':
+        print('[*] Running XMeans clustering.')
+        clusters = xmeans(Y, args.k) 
+    elif args.clustering=='fuzzy':
+        print('[*] Running Fuzzy clustering.')
+        clusters = fuzzy_means(Y, args.k) 
     
-    rows_norm = LA.norm(eigVec, axis=1, ord=2)
-    Y = (eigVec.T /rows_norm).T
-
-
-    if args.custom:
-        print('Running custom kmeans')
-        y_hat = dict()
-        labels = custom_kmeans(Y) 
-        for i,node in enumerate(G.nodes()):
-            y_hat[node]= labels[i]
-        return y_hat
-    else:
-        print('Running euclidean kmeans')
-        centroids, distortion = scipy_kmeans(Y,args.k) 
-
-        # creating output label vector
-        #y_hat = np.zeros(n, dtype=int)
-
-        # creating output dictionary label vector
-        y_hat = dict()
-        for i, node in enumerate(G.nodes()):
-            dists = np.array([np.linalg.norm(Y[i] - centroids[c]) for c in range(args.k)])
-            y_hat[node] = np.argmin(dists)
-        return y_hat
+    # Creating output dictionary label vector
+    y_hat = dict()
+    for i, vertex_ID in enumerate(G.nodes()):
+        if args.clustering=='kmeans':
+            y_hat[vertex_ID] = np.argmin(np.array([np.linalg.norm(Y[i]-centroids[c]) for c in range(args.k)]))
+        else:
+            y_hat[vertex_ID]= clusters[i]
+    return y_hat
 
 
 # Drawing the graph. CAUTION: it takes too much time to execute
@@ -184,33 +233,17 @@ def draw(G, y_hat):
     plt.close()
 
 
-
-# Returns the symmetric normalized Laplacian matrix of a given graph
-def laplacian_matrix(A):
-    n = np.shape(A)[0]
-    if args.normalizeLaplacian:
-        D = np.diag(1 / np.sqrt(np.ravel(A.sum(axis=0))))
-    else:
-        D = np.diag(1/ np.ravel(A.sum(axis=0)))
-    return  np.identity(n) - D.dot(A).dot(D) 
-
-
-
-# Computes the two(k) smallest(SM) eigenvalues and eigenvectors if we want to do largest magnitude (LM) 
-def get_eig_laplacian(G):
-    return eigsh(nx.normalized_laplacian_matrix(G), k=args.k, which='SM')
-
-
 # Writes the result to a file TO BE COMPLETED
-def write_result(G, labels,score):
-    with open(args.file[:-4]+'_'+ str(score) +'.output','w') as f:
-        f.write("# graphID numOfVertices numOfEdges k\n")
-        llista = list()
-        for node in G.nodes(): #prova
-            llista.append((int(node), labels[node]))
-        llista.sort()
-        for i,j in llista:
-            f.write(f"{i} {j}\n")
+def save_result(G, y_hat, score):
+    graphID = args.file.split('/')[-1].split('.txt')[-2]
+    edges = {'ca-GrQc':13428,'Oregon-1':22002,'soc-Epinions1':405739,'web-NotreDame':1117563,'roadNet-CA':2760388}
+    extra = '_random_centroids_'+str(args.random_centroids)+'_distance_metric_'+args.distance_metric+'_seed_'+str(args.seed) if args.clustering=='custom_kmeans' else ''
+    file_output = args.outputs_path+graphID+'_'+str(args.clustering)+extra+'_k_'+str(args.k)+'_eig_kept_'+str(args.eig_kept)+'_score_'+str(round(score, 4))+'.output'
+    with open(file_output, 'w') as f:
+        f.write('# '+str(graphID)+' '+str(len(G))+' '+str(edges[graphID])+' '+str(args.k)+'\n')
+        for vertex_ID in np.sort([int(x) for x in G.nodes()]):
+            f.write(f'{vertex_ID} {y_hat[str(vertex_ID)]}\n')
+    print('Results saved in '+file_output)
 
 
 # Main function
@@ -218,16 +251,11 @@ def main():
     f = open(args.file, 'rb')
     G = nx.read_edgelist(f)
     f.close()
-
-    #A = nx.to_numpy_matrix(G) #adjacency matrix
-
-    print('Starting the algorithm')
+    print('[*] Starting the algorithm.')
     y_hat = spectral_clustering(G)
-    #score = score_clustering(G,y_hat)
     score = score_clustering_graph(G, y_hat)
-
-    print('Score of the partition: {}'.format(score))
-    write_result(G,y_hat, score)
+    print('Score of the clustering: {}'.format(score))
+    save_result(G, y_hat, score)
 
 
 if __name__ == '__main__':
