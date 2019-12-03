@@ -20,9 +20,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--seed', type=int, default=1, help='Random seed.')
 parser.add_argument('--file', type=str, default='./data/Oregon-1.txt', help='Path of the input graph file.')
 parser.add_argument('--outputs_path', type=str, default='./results/', help='Path of the outputs.')
-parser.add_argument('--clustering', default='kmeans', type=str, help='Use "kmeans", "custom_kmeans", "xmeans", "fuzzy" or "agglomerative".')
-parser.add_argument('--random_centroids', default=True, type=bool, help='Random KMeans centroids initialization.')
-parser.add_argument('--distance_metric', default='EUCLIDEAN', type=str, help='Distance metric: "MINKOWSKI", "CHEBYSHEV", "EUCLIDEAN".')
+parser.add_argument('--clustering', default='kmeans', type= str , help='Use "kmeans", "custom_kmeans", "xmeans"  or "agglomerative".')
+parser.add_argument('--random_centroids', default=True, type=lambda x: (str(x).lower() == 'true'), help='Random KMeans centroids initialization.')
+parser.add_argument('--distance_metric', default='EUCLIDEAN', type=str , help='Distance metric: "MINKOWSKI", "CHEBYSHEV", "EUCLIDEAN".')
 parser.add_argument('--k', type=int, default=5, help='Number of desired clusters.')
 parser.add_argument('--eig_kept', type=int, default=None, help='Number of eigen vectors kept.')
 parser.add_argument('--eig_normalization', type=str, default='vertex', help='Normalization of eigen vectors by "vertex", "eig" or "None".')
@@ -72,6 +72,10 @@ def score_clustering_graph(G, y_hat):
     return total
 
 
+# It changes randomly some nodes in order to see if it improves in a Hill Climbing approach
+#def brute_force(G, 
+
+
 # Faster and more customizable kmeans using pyclustering
 def custom_kmeans(data, k, tolerance= 0.01, ccore=True):
     # Centroids initalization
@@ -79,7 +83,8 @@ def custom_kmeans(data, k, tolerance= 0.01, ccore=True):
         random.seed(args.seed)
         centers = [[random.random() for _ in range(data.shape[1])] for _ in range(k)]
     else:
-        centers = kmeans_plusplus_initializer(data, k, seed=1).initialize()
+        random.seed(args.seed)
+        centers = kmeans_plusplus_initializer(data, k).initialize()
 
     # Distance metric definition
     if args.distance_metric=='MINKOWSKI':
@@ -117,35 +122,20 @@ def agglomerative_hierarchical(data, k, ccore=True):
     return encoder.get_clusters()
 
 
-# Fuzzy means clustering
-def fuzzy_means(data, k, ccore=True):
-    initial_centers = kmeans_plusplus_initializer(data, k, kmeans_plusplus_initializer.FARTHEST_CENTER_CANDIDATE).initialize()
-    # create instance of Fuzzy C-Means algorithm
-    fcm_instance = fcm(data, initial_centers)
-    # run cluster analysis and obtain results
-    fcm_instance.process()
-    clusters = fcm_instance.get_clusters()
-    type_repr = kmeans_instance.get_cluster_encoding()
-    encoder = cluster_encoder(type_repr, clusters, data)
-
-    # Change representation from index list to label list and return clusters
-    encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
-    clusters = encoder.get_clusters()
-    return clusters
-
-
 # Xmeans clustering
-def xmeans(data, k, ccore=True):
+def xmeans_clustering(data, k, ccore=True):
     # Prepare initial centers - amount of initial centers defines amount of clusters from which X-Means will
     # start analysis.
+
+    #random.seed(args.seed)
     initial_centers = kmeans_plusplus_initializer(data, k).initialize()
     # Create instance of X-Means algorithm. The algorithm will start analysis from 2 clusters, the maximum
     # number of clusters that can be allocated is 20.
-    xmeans_instance = xmeans(data, initial_centers, k)
+    xmeans_instance = xmeans(data, initial_centers, k, ccore=ccore)
     xmeans_instance.process()
     # Extract clustering results: clusters and their centers
     clusters = xmeans_instance.get_clusters()
-    type_repr = kmeans_instance.get_cluster_encoding()
+    type_repr = xmeans_instance.get_cluster_encoding()
     encoder = cluster_encoder(type_repr, clusters, data)
 
     # Change representation from index list to label list and return clusters
@@ -185,10 +175,7 @@ def spectral_clustering(G):
         centroids, distortion = scipy_kmeans(Y, args.k) 
     elif args.clustering=='xmeans':
         print('[*] Running XMeans clustering.')
-        clusters = xmeans(Y, args.k) 
-    elif args.clustering=='fuzzy':
-        print('[*] Running Fuzzy clustering.')
-        clusters = fuzzy_means(Y, args.k) 
+        clusters = xmeans_clustering(Y, args.k) 
     
     # Creating output dictionary label vector
     y_hat = dict()
@@ -238,7 +225,7 @@ def save_result(G, y_hat, score):
     graphID = args.file.split('/')[-1].split('.txt')[-2]
     edges = {'ca-GrQc':13428,'Oregon-1':22002,'soc-Epinions1':405739,'web-NotreDame':1117563,'roadNet-CA':2760388}
     extra = '_random_centroids_'+str(args.random_centroids)+'_distance_metric_'+args.distance_metric+'_seed_'+str(args.seed) if args.clustering=='custom_kmeans' else ''
-    file_output = args.outputs_path+graphID+'_'+str(args.clustering)+extra+'_k_'+str(args.k)+'_eig_kept_'+str(args.eig_kept)+'_score_'+str(round(score, 4))+'.output'
+    file_output = args.outputs_path+graphID+'_'+str(args.clustering)+extra+'_k_'+str(args.k)+'_eig_kept_'+str(args.eig_kept)+'_score_'+str(round(score, 4)) + "_unique_" + str(np.unique(list(y_hat.values())).shape[0]) +'.output'
     with open(file_output, 'w') as f:
         f.write('# '+str(graphID)+' '+str(len(G))+' '+str(edges[graphID])+' '+str(args.k)+'\n')
         for vertex_ID in np.sort([int(x) for x in G.nodes()]):
