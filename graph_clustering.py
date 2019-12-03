@@ -81,7 +81,7 @@ def score_clustering_graph(G, y_hat):
 
 
 # Faster and more customizable kmeans using pyclustering
-def custom_kmeans(data, k, tolerance= 0, ccore=True):
+def custom_kmeans(data, k, tolerance=0.01, ccore=True):
     # Centroids initalization
     if args.random_centroids:
         random.seed(args.seed)
@@ -99,7 +99,7 @@ def custom_kmeans(data, k, tolerance= 0, ccore=True):
 
     # Clustering
     observer = kmeans_observer()
-    kmeans_instance = kmeans(data, centers, ccore, tolerance, observer=observer, itermax = 5000, metric=metric, seed=1) # Create instance of the algorithm
+    kmeans_instance = kmeans(data, centers, ccore, tolerance, observer=observer, metric=metric, seed=args.seed) # Create instance of the algorithm
     kmeans_instance.process()
     clusters = kmeans_instance.get_clusters()
     type_repr = kmeans_instance.get_cluster_encoding()
@@ -149,6 +149,7 @@ def xmeans_clustering(data, k, ccore=True):
 
 # Computes the two(k) smallest(SM) eigenvalues and eigenvectors, if we want to do largest magnitude (LM) 
 def get_eig_laplacian(G):
+    #return eigsh(nx.laplacian_matrix(G).astype(float), k=args.eig_kept, which='SM')
     return eigsh(nx.normalized_laplacian_matrix(G), k=args.eig_kept, which='SM')
 
 
@@ -180,10 +181,10 @@ def spectral_clustering(G):
     elif args.clustering=='kmeans':
         print('[*] Running KMeans Euclidean clustering.')
         random.seed(args.seed)
-        centroids, distortion = scipy_kmeans(Y, args.k) 
+        centroids, distortion = scipy_kmeans(Y,args.k) 
     elif args.clustering=='kmeans_sklearn':
         print('[*] Running KMeans Sklearn.')
-        clusters = KMeans(n_clusters= args.k, n_init=300,tol=0,max_iter=2000, random_state=args.seed).fit_predict(Y) 
+        clusters = KMeans(n_clusters= args.k, random_state=args.seed).fit_predict(Y) 
     elif args.clustering=='xmeans':
         print('[*] Running XMeans clustering.')
         clusters = xmeans_clustering(Y, args.k) 
