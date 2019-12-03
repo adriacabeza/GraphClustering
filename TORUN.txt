@@ -30,5 +30,5 @@ python graph_clustering.py --file "./data/roadNet-CA.txt" --clustering "custom_k
 python graph_clustering.py --file "./data/ca-GrQc.txt" --clustering "agglomerative" --k 5 --eig_kept 5 --eig_normalization "vertex"
 python graph_clustering.py --file "./data/Oregon-1.txt" --clustering "agglomerative" --k 5 --eig_kept 5 --eig_normalization "vertex"
 python graph_clustering.py --file "./data/soc-Epinions1.txt" --clustering "agglomerative" --k 5 --eig_kept 5 --eig_normalization "vertex"
-python graph_clustering.py --file "./data/web-NotreDame.txt" --clustering "agglomerative" --k 5 --eig_kept 5 --eig_normalization "vertex"
-python graph_clustering.py --file "./data/roadNet-CA.txt" --clustering "agglomerative" --k 5 --eig_kept 5 --eig_normalization "vertex"
+(ADRIA) python graph_clustering.py --file "./data/web-NotreDame.txt" --clustering "agglomerative" --k 5 --eig_kept 5 --eig_normalization "vertex"
+(ADRIA) python graph_clustering.py --file "./data/roadNet-CA.txt" --clustering "agglomerative" --k 5 --eig_kept 5 --eig_normalization "vertex"
