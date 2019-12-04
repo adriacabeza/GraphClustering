@@ -19,7 +19,7 @@ from pyclustering.cluster.center_initializer import kmeans_plusplus_initializer
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--seed', type=int, default=1, help='Random seed.')
+parser.add_argument('--seed', type=int, default=0, help='Random seed.')
 parser.add_argument('--iterations', type=int, default=0, help='Number of iterations.')
 parser.add_argument('--file', type=str, default='./data/Oregon-1.txt', help='Path of the input graph file.')
 parser.add_argument('--outputs_path', type=str, default='./results/', help='Path of the outputs.')
@@ -28,6 +28,8 @@ parser.add_argument('--random_centroids', default=True, type=lambda x: (str(x).l
 parser.add_argument('--distance_metric', default='EUCLIDEAN', type=str , help='Distance metric: "MINKOWSKI", "CHEBYSHEV", "EUCLIDEAN".')
 parser.add_argument('--k', type=int, default=5, help='Number of desired clusters.')
 parser.add_argument('--eig_kept', type=int, default=None, help='Number of eigen vectors kept.')
+parser.add_argument('--normalize_laplacian', type= lambda x: (str(x).lower() == 'true'), default= True, help='Normalize Laplacian')
+parser.add_argument('--invert_laplacian', type= lambda x: (str(x).lower() == 'true'), default=False, help='Invert Laplacian')
 parser.add_argument('--second', type=lambda x: (str(x).lower() == 'true'), default=None, help='Using only second smallest eigenvector.')
 parser.add_argument('--eig_normalization', type=str, default='vertex', help='Normalization of eigen vectors by "vertex", "eig" or "None".')
 args = parser.parse_args()
@@ -76,12 +78,8 @@ def score_clustering_graph(G, y_hat):
     return total
 
 
-# It changes randomly some nodes in order to see if it improves in a Hill Climbing approach
-#def brute_force(G, 
-
-
 # Faster and more customizable kmeans using pyclustering
-def custom_kmeans(data, k, tolerance=0.01, ccore=True):
+def custom_kmeans(data, k, tolerance=0.0001, ccore=True):
     # Centroids initalization
     if args.random_centroids:
         random.seed(args.seed)
@@ -149,8 +147,12 @@ def xmeans_clustering(data, k, ccore=True):
 
 # Computes the two(k) smallest(SM) eigenvalues and eigenvectors, if we want to do largest magnitude (LM) 
 def get_eig_laplacian(G):
-    #return eigsh(nx.laplacian_matrix(G).astype(float), k=args.eig_kept, which='SM')
-    return eigsh(nx.normalized_laplacian_matrix(G), k=args.eig_kept, which='SM')
+    if args.normalize_laplacian:
+        print('hola')
+        return eigsh((-1 if args.invert_laplacian else 1)*nx.normalized_laplacian_matrix(G), k=args.eig_kept, which= 'LM' if args.invert_laplacian else 'SM')
+    else: 
+        print('adeu')
+        return eigsh((-1 if args.invert_laplacian else 1)*nx.laplacian_matrix(G).astype(float), k=args.eig_kept, which='LM' if args.invert_laplacian else 'SM')
 
 
 # Spectral clustering algorithm using args.clustering method
@@ -169,8 +171,6 @@ def spectral_clustering(G):
     if args.second:
         Y = Y[:,[1]]
 
-
-
     # Cluster the eigen vectors of the graph
     if args.clustering=='agglomerative':
         print('[*] Running agglomerative hierarchical clustering.')
@@ -184,7 +184,7 @@ def spectral_clustering(G):
         centroids, distortion = scipy_kmeans(Y,args.k) 
     elif args.clustering=='kmeans_sklearn':
         print('[*] Running KMeans Sklearn.')
-        clusters = KMeans(n_clusters= args.k, random_state=args.seed).fit_predict(Y) 
+        clusters = KMeans(n_clusters= args.k, init='k-means++', random_state=args.seed).fit_predict(Y) 
     elif args.clustering=='xmeans':
         print('[*] Running XMeans clustering.')
         clusters = xmeans_clustering(Y, args.k) 
@@ -237,7 +237,7 @@ def save_result(G, y_hat, score):
     graphID = args.file.split('/')[-1].split('.txt')[-2]
     edges = {'ca-GrQc':13428,'Oregon-1':22002,'soc-Epinions1':405739,'web-NotreDame':1117563,'roadNet-CA':2760388}
     extra = '_random_centroids_'+str(args.random_centroids)+'_distance_metric_'+args.distance_metric+'_seed_'+str(args.seed) if args.clustering=='custom_kmeans' else ''
-    file_output = args.outputs_path+graphID+'_'+str(args.clustering)+extra+'_k_'+str(args.k)+'_eig_kept_'+str(args.eig_kept)+'_score_'+str(round(score, 4)) + "_unique_" + str(np.unique(list(y_hat.values())).shape[0]) + '_second_'+ str(args.second) +'.output'
+    file_output = args.outputs_path+graphID+'_'+str(args.clustering)+extra+'_k_'+str(args.k)+'_eig_kept_'+str(args.eig_kept)+'_eig_norm'+args.eig_normalization+'_score_'+str(round(score, 4)) + "_unique_" + str(np.unique(list(y_hat.values())).shape[0]) + '_second_'+ str(args.second) +'.output'
     with open(file_output, 'w') as f:
         f.write('# '+str(graphID)+' '+str(len(G))+' '+str(edges[graphID])+' '+str(args.k)+'\n')
         for vertex_ID in np.sort([int(x) for x in G.nodes()]):
@@ -245,14 +245,15 @@ def save_result(G, y_hat, score):
     print('Results saved in '+file_output)
     return file_output
 
+
 # Main function
 def main():
     f = open(args.file, 'rb')
     G = nx.read_edgelist(f)
     f.close()
-    best_file = ""
-    best_score = 0
-    print('[*] Starting the algorithm.')
+    best_file = ''
+    best_score = np.inf
+    print('\n[*] Starting the algorithm.')
     y_hat = spectral_clustering(G)
     if np.unique(list(y_hat.values())).shape[0] < args.k:
         pass
@@ -261,9 +262,9 @@ def main():
         print('Score of the clustering: {}'.format(best_score))
         best_file = save_result(G, y_hat, best_score)
 
-    for i in range(1, args.iterations):
-        args.seed = i
-        print('[*] Starting the algorithm with seed {}'.format(i))
+    for j in range(1, args.iterations):
+        args.seed = j
+        print('\n[*] Starting the algorithm with seed {}'.format(j))
         y_hat = spectral_clustering(G)
         if np.unique(list(y_hat.values())).shape[0] < args.k:
             pass
@@ -272,7 +273,8 @@ def main():
             if score < best_score:
                 print('Score of the clustering: {}'.format(score))
                 best_score = score
-                os.remove(best_file)
+                if best_file!='':
+                    os.remove(best_file)
                 best_file = save_result(G, y_hat, score)
 
 
