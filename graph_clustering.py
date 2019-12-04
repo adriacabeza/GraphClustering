@@ -1,4 +1,5 @@
 import os
+import os.path
 import argparse
 import pickle
 import random
@@ -7,7 +8,7 @@ import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
-from scipy.sparse import eye
+from scipy.sparse import eye, lil_matrix
 from scipy.sparse.linalg import eigsh
 from numpy import linalg as LA;
 from scipy.cluster.vq import kmeans as scipy_kmeans;
@@ -25,12 +26,15 @@ parser.add_argument('--outputs_path', type=str, default='./results/', help='Path
 parser.add_argument('--clustering', default='kmeans', type= str , help='Use "kmeans", "custom_kmeans", "kmeans_sklearn", "xmeans"  or "agglomerative".')
 parser.add_argument('--random_centroids', default=True, type=lambda x: (str(x).lower() == 'true'), help='Random KMeans centroids initialization.')
 parser.add_argument('--distance_metric', default='EUCLIDEAN', type=str , help='Distance metric: "MINKOWSKI", "CHEBYSHEV", "EUCLIDEAN".')
+parser.add_argument('--subset', type=int, default=2, help='Subset of the eigenvectors that we use.')
 parser.add_argument('--compute_eig', type= lambda x: (str(x).lower() == 'true'), default= True, help='Compute Eigenvectors')
 parser.add_argument('--k', type=int, default=5, help='Number of desired clusters.')
 parser.add_argument('--eig_kept', type=int, default=None, help='Number of eigen vectors kept.')
 parser.add_argument('--normalize_laplacian', type= lambda x: (str(x).lower() == 'true'), default= True, help='Normalize Laplacian')
 parser.add_argument('--invert_laplacian', type= lambda x: (str(x).lower() == 'true'), default=False, help='Invert Laplacian')
 parser.add_argument('--second', type=lambda x: (str(x).lower() == 'true'), default=None, help='Using only second smallest eigenvector.')
+parser.add_argument('--compute_eig', type= lambda x: (str(x).lower() == 'true'), default= True, help='Compute Eigenvectors')
+parser.add_argument('--networkx', type=lambda x: (str(x).lower() == 'true'), default=None, help='Use networkx library')
 parser.add_argument('--eig_normalization', type=str, default='vertex', help='Normalization of eigen vectors by "vertex", "eig" or "None".')
 args = parser.parse_args()
 
@@ -38,8 +42,12 @@ args = parser.parse_args()
 if args.eig_kept is None:
     args.eig_kept = args.k
 
-# Score our partitions using a graph and its cluster
-def score_clustering_graph(G, y_hat):
+# Score our partitions using a graph and its cluster using networkx
+def score_clustering_graph(y_hat, G=None):
+    if G is None:
+        f = open(args.file, 'rb')
+        G = nx.read_edgelist(f)
+        f.close()
     print('[*] Starting to calculate score.')
     total = 0
     for i in range(args.k):
@@ -87,26 +95,75 @@ def custom_kmeans(data, k, tolerance=0.0001, ccore=True):
     return clusters
 
 
-def compute_laplacian_matrix(G):
-    A = nx.adjacency_matrix(G)
-    D = eye(len(G))
-    L = D-A
-    return L
-
-
 # Computes the two(k) smallest(SM) eigenvalues and eigenvectors, if we want to do largest magnitude (LM) 
-def get_eig_laplacian(G):
-    laplacian = nx.normalized_laplacian_matrix(G).astype(float)
-    print('Computing laplacian by hand')
-    #laplacian = compute_laplacian_matrix(G)
-    print('Computing eigenvectors')
-    return eigsh(laplacian, k= args.eig_kept, which='SM')
+def get_eig_laplacian_networkx(G):
+    print('[*] Computing eigenvectors')
+    return eigsh(nx.normalized_laplacian_matrix(G).astype(float), k= args.eig_kept, which='LM', sigma=0)
+
+
+def get_eig_laplacian(l):
+    print('[*] Computing eigenvectors')
+    return eigsh(L.astype(float), k= args.eig_kept, which='LM', sigma=0)
+
+
+def read_graph(file_name):
+    verts = 0
+    with open(a, "r") as f:
+        info = f.readline().split()
+        n_vertices = int(info[2])
+
+    # empty matrix
+    A = lil_matrix((n_vertices, n_vertices))
+    edges = []
+
+    # Add edges to the adjacency matrix
+    for edge in f:
+        vertices = edge.split()
+        A[int(vertices[0]), int(vertices[1])] = 1
+        A[int(vertices[1]), int(vertices[0])] = 1
+        edges.append(([int(vertices[1]), int(vertices[0])]))
+
+    return A, n_vertices
+
 
 
 # Spectral clustering algorithm using args.clustering method
 def spectral_clustering(G):
-    # Compute the eigen vectors of the graph
-    eigVal, eigVec = get_eig_laplacian(G)
+    graphID = args.file.split('/')[-1].split('.txt')[-2]
+    file_output = graphID+'_'+'_eig_norm_'+ str(args.eig_normalization) +'_invert_' + str(args.invert_laplacian) +'.pickle'
+    # We can use networkx or not
+    if args.compute_eig or os.path.isfile(file_output)::
+        if args.networkx:
+            f = open(args.file, 'rb')
+            G = nx.read_edgelist(f)
+            f.close()        
+            # Compute the eigen vectors of the graph
+            eigVal, eigVec = get_eig_laplacian_networkx(G)
+        else:
+            A, n_vertices = read_graph(args.file)
+            
+            D = lil_matrix((int_verts, int_verts))
+            aux_sum = A.sum(axis=1)
+            for i in range(n_vertices):
+                D[i,i]= aux_sum[i]
+                L = D - A
+                eigVal, eigVec = get_eig_laplacian(L)
+            
+        sorted_eigVal = eigVal.argsort()
+        eigVec = eigVec[:,sorted_eigVal[::]]
+        with open(file_output, 'wb') as f:
+            pickle.dump(eigVec,f)  
+
+    else: 
+        with open(file_output, 'rb') as f:
+            eigVec = pickle.load(f)
+            
+
+    selected = np.random.choice(a=[False, True], size=(args.eig_kept-args.subset), p=[0.5, 0.5])
+    selected = np.concatenate(([True]*args.eig_kept, selected))
+    eigVec = eigVec[:,selected]
+
+
     if args.eig_normalization=='vertex':
         vertex_norm = LA.norm(eigVec, axis=1, ord=2)
         Y = (eigVec.T/vertex_norm).T
@@ -119,7 +176,7 @@ def spectral_clustering(G):
     if args.second:
         Y = Y[:,[1]]
 
-    
+
     # Cluster the eigen vectors of the graph
     if args.clustering=='custom_kmeans':
         print('[*] Running customized KMeans clustering.')
@@ -130,6 +187,7 @@ def spectral_clustering(G):
     elif args.clustering=='kmeans_sklearn':
         print('[*] Running KMeans Sklearn.')
         clusters = KMeans(n_clusters= args.k, init='k-means++').fit_predict(Y) 
+        #clusters = KMeans(n_clusters=int(k), n_init=20, max_iter=400).fit_predit(Y)
     
     # Creating output dictionary label vector
     y_hat = dict()
@@ -155,19 +213,21 @@ def save_result(G, y_hat, score):
     return file_output
 
 
+
 # Main function
 def main():
-    f = open(args.file, 'rb')
-    G = nx.read_edgelist(f)
-    f.close()
     print('\n[*] Starting the algorithm.')
-    for i in range(1,40):
-        args.eig_kept = i 
+    best_score = 100000
+    best_file = ''
+    for i in range(args.iterations):
         y_hat = spectral_clustering(G)
-        best_score = score_clustering_graph(G, y_hat)
-        print('Score of the clustering: {}'.format(best_score))
-        best_file = save_result(G, y_hat, best_score)
-
+        score = score_clustering_graph(y_hat, G)
+        if score < best_score:
+            best_score = score
+            if best_file != '':
+                os.remove(best_file)
+                best_file = save_result(G, y_hat, best_score)
+                print('Score of the clustering: {}'.format(best_score))
 
 
 if __name__ == '__main__':
