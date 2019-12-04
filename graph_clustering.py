@@ -246,7 +246,7 @@ def main():
     G = nx.read_edgelist(f)
     f.close()
     best_file = ''
-    best_score = 1000
+    best_score = np.inf
     print('\n[*] Starting the algorithm.')
     y_hat = spectral_clustering(G)
     if np.unique(list(y_hat.values())).shape[0] < args.k:
@@ -267,7 +267,8 @@ def main():
             if score < best_score:
                 print('Score of the clustering: {}'.format(score))
                 best_score = score
-                os.remove(best_file)
+                if best_file!='':
+                    os.remove(best_file)
                 best_file = save_result(G, y_hat, score)
 
 
