@@ -81,7 +81,7 @@ def score_clustering_graph(G, y_hat):
 
 
 # Faster and more customizable kmeans using pyclustering
-def custom_kmeans(data, k, tolerance=0.01, ccore=True):
+def custom_kmeans(data, k, tolerance=0.0001, ccore=True):
     # Centroids initalization
     if args.random_centroids:
         random.seed(args.seed)
@@ -184,7 +184,7 @@ def spectral_clustering(G):
         centroids, distortion = scipy_kmeans(Y,args.k) 
     elif args.clustering=='kmeans_sklearn':
         print('[*] Running KMeans Sklearn.')
-        clusters = KMeans(n_clusters= args.k, random_state=args.seed).fit_predict(Y) 
+        clusters = KMeans(n_clusters= args.k, init='k-means++').fit_predict(Y) 
     elif args.clustering=='xmeans':
         print('[*] Running XMeans clustering.')
         clusters = xmeans_clustering(Y, args.k) 
@@ -261,19 +261,21 @@ def main():
         print('Score of the clustering: {}'.format(best_score))
         best_file = save_result(G, y_hat, best_score)
 
-    for i in range(1, args.iterations):
-        args.seed = i
-        print('[*] Starting the algorithm with seed {}'.format(i))
-        y_hat = spectral_clustering(G)
-        if np.unique(list(y_hat.values())).shape[0] < args.k:
-            pass
-        else:
-            score = score_clustering_graph(G, y_hat) 
-            if score < best_score:
-                print('Score of the clustering: {}'.format(score))
-                best_score = score
-                os.remove(best_file)
-                best_file = save_result(G, y_hat, score)
+    for j in range(12,13):
+        args.eig_kept = j
+        for i in range(1, args.iterations):
+            args.seed = i
+            print('[*] Starting the algorithm with seed {}'.format(i))
+            y_hat = spectral_clustering(G)
+            if np.unique(list(y_hat.values())).shape[0] < args.k:
+                pass
+            else:
+                score = score_clustering_graph(G, y_hat) 
+                if score < best_score:
+                    print('Score of the clustering: {}'.format(score))
+                    best_score = score
+                    os.remove(best_file)
+                    best_file = save_result(G, y_hat, score)
 
 
 if __name__ == '__main__':
