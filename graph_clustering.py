@@ -29,6 +29,7 @@ parser.add_argument('--distance_metric', default='EUCLIDEAN', type=str , help='D
 parser.add_argument('--k', type=int, default=5, help='Number of desired clusters.')
 parser.add_argument('--eig_kept', type=int, default=None, help='Number of eigen vectors kept.')
 parser.add_argument('--normalize_laplacian', type= lambda x: (str(x).lower() == 'true'), default= True, help='Normalize Laplacian')
+parser.add_argument('--invert_laplacian', type= lambda x: (str(x).lower() == 'true'), default=False, help='Invert Laplacian')
 parser.add_argument('--second', type=lambda x: (str(x).lower() == 'true'), default=None, help='Using only second smallest eigenvector.')
 parser.add_argument('--eig_normalization', type=str, default='vertex', help='Normalization of eigen vectors by "vertex", "eig" or "None".')
 args = parser.parse_args()
@@ -147,9 +148,11 @@ def xmeans_clustering(data, k, ccore=True):
 # Computes the two(k) smallest(SM) eigenvalues and eigenvectors, if we want to do largest magnitude (LM) 
 def get_eig_laplacian(G):
     if args.normalize_laplacian:
-        return eigsh(nx.normalized_laplacian_matrix(G), k=args.eig_kept, which='SM')
+        print('hola')
+        return eigsh((-1 if args.invert_laplacian else 1)*nx.normalized_laplacian_matrix(G), k=args.eig_kept, which= 'LM' if args.invert_laplacian else 'SM')
     else: 
-        return eigsh(nx.laplacian_matrix(G).astype(float), k=args.eig_kept, which='SM')
+        print('adeu')
+        return eigsh((-1 if args.invert_laplacian else 1)*nx.laplacian_matrix(G).astype(float), k=args.eig_kept, which='LM' if args.invert_laplacian else 'SM')
 
 
 # Spectral clustering algorithm using args.clustering method
