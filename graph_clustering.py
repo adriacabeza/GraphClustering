@@ -76,10 +76,6 @@ def score_clustering_graph(G, y_hat):
     return total
 
 
-# It changes randomly some nodes in order to see if it improves in a Hill Climbing approach
-#def brute_force(G, 
-
-
 # Faster and more customizable kmeans using pyclustering
 def custom_kmeans(data, k, tolerance=0.0001, ccore=True):
     # Centroids initalization
@@ -250,7 +246,7 @@ def main():
     G = nx.read_edgelist(f)
     f.close()
     best_file = ''
-    best_score = 0
+    best_score = 1000
     print('\n[*] Starting the algorithm.')
     y_hat = spectral_clustering(G)
     if np.unique(list(y_hat.values())).shape[0] < args.k:
