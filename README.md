@@ -1,5 +1,5 @@
 <h1 align="center">:milky_way: GraphClustering: Method to partition a graph </h1>
-Project description in *project.pdf* and final report in *report.pdf*. We will be using the following graphs from the Stanford Network Analysis Project (SNAP): ca-GrQc, Oregon-1, roadNet-CA, soc-Epinions1, and web-NotreDame (http://snap.stanford.edu/data/index.html).
+We will be using the following graphs from the Stanford Network Analysis Project (SNAP): ca-GrQc, Oregon-1, roadNet-CA, soc-Epinions1, and web-NotreDame (http://snap.stanford.edu/data/index.html). Project description in _project.pdf_ and final report in _report.pdf_. 
 
 ## Initial example visualization and clustering of the graph ca-GrQc
 <p float="center">
@@ -29,7 +29,7 @@ pip install -r requirements.txt
 Usage of [virtualenv](https://realpython.com/blog/python/python-virtual-environments-a-primer/) is recommended for package library / runtime isolation.
 
 ### Usage
-Run the clustering algorithm from the main Python file *graph_clustering.py*. You can find command examples in *REQUIREMENTS.txt* and read arguments help.
+Run the clustering algorithm from the main Python file *graph_clustering.py*. You can read arguments help and find command examples in *REQUIREMENTS.txt*. List of arguments:
 
 - *seed*: Random seed.
 - *iterations*: Number of iterations with different seed.
@@ -50,4 +50,5 @@ Run the clustering algorithm from the main Python file *graph_clustering.py*. Yo
 ## Authors
 
 👤 Álvaro Orgaz Expósito ([alvarorgaz](https://github.com/alvarorgaz))
+
 👤 Adrià Cabeza ([adriacabeza](https://github.com/adriacabeza))
