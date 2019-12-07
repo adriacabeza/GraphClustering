@@ -1,18 +1,14 @@
-<h1 align="center">:milky_way: GraphClustering: Method to partition a graph</h1>
-We will be using the following graphs from the [Stanford Network Analysis Project (SNAP)](http://snap.stanford.edu/data/index.html): ca-GrQc, Oregon-1, roadNet-CA, soc-Epinions1, and web-NotreDame
+<h1 align="center">:milky_way: GraphClustering: Method to partition a graph </h1>
+Project description in *project.pdf* and final report in *report.pdf*. We will be using the following graphs from the Stanford Network Analysis Project (SNAP): ca-GrQc, Oregon-1, roadNet-CA, soc-Epinions1, and web-NotreDame (http://snap.stanford.edu/data/index.html).
 
+## Initial example visualization and clustering of the graph ca-GrQc
 <p float="center">
-  <img src="docs/images/ca-GrQc_kamada_kawai_graph_colormap2clusters.png" width="405" />
-  <img src="docs/images/ca-GrQcSpectralClustering2D.png" width="390" /> 
+  <img src="docs/images/ca-GrQc_kamada_kawai_graph_colormap2clusters.png" width="405"/>
+  <img src="docs/images/ca-GrQcSpectralClustering2D.png" width="390"/> 
 </p>
+<p align="center"> Kamada-Kawai graph visualization of the ca-GrQc graph and Clustering using the Spectral Embedding. </p>
 
-<p align="center">
-  Kamada-Kawai graph visualization of the ca-GrQc graph and Clustering using the Spectral Embedding 
-</p>
-
-
-## Dataset Statistics: 
-
+## Statistics of graph datasets
 | Graph         | #vertices | #edges  | #clusters |
 |---------------|-----------|---------|-----------|
 | ca-GrQc       | 4158      | 13428   | 2         |
@@ -20,47 +16,38 @@ We will be using the following graphs from the [Stanford Network Analysis Projec
 | soc-Epinions1 | 75877     | 405739  | 10        |
 | web-NotreDame | 325729    | 1117563 | 20        |
 | roadNet-CA    | 1957027   | 2760388 | 50        |
-
-## Report
--> [https://www.overleaf.com/5514615922jvndkvxytssz](https://www.overleaf.com/5514615922jvndkvxytssz)
-
-
-### Spectral Graph Partitioning
-
  
+## Deployment
+
 ### Requirements
-
-1. Python 3.7+.
-
-### Recommendations
-Usage of [virtualenv](https://realpython.com/blog/python/python-virtual-environments-a-primer/) is recommended for package library / runtime isolation.
-
-
-### Usage
-- Install dependencies
-
+Python 3 and install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-- Run the clustering algorithm
-```bash
-usage: graph_clustering.py [-h] [--seed SEED] [--iterations ITERATIONS]
-                           [--file FILE] [--outputs_path OUTPUTS_PATH]
-                           [--clustering CLUSTERING]
-                           [--random_centroids RANDOM_CENTROIDS]
-                           [--distance_metric DISTANCE_METRIC]
-                           [--compute_eig COMPUTE_EIG] [--k K]
-                           [--networkx NETWORKX] [--eig_kept EIG_KEPT]
-                           [--normalize_laplacian NORMALIZE_LAPLACIAN]
-                           [--invert_laplacian INVERT_LAPLACIAN]
-                           [--second SECOND]
-                           [--eig_normalization EIG_NORMALIZATION]
-```
+### Recommendations
+Usage of [virtualenv](https://realpython.com/blog/python/python-virtual-environments-a-primer/) is recommended for package library / runtime isolation.
+
+### Usage
+Run the clustering algorithm from the main Python file *graph_clustering.py*. You can find command examples in *REQUIREMENTS.txt* and read arguments help.
+
+- *seed*: Random seed.
+- *iterations*: Number of iterations with different seed.
+- *file*: Path of the input graph file.
+- *outputs_path*: Path to save the outputs.
+- *clustering*: Use "kmeans", "custom_kmeans", "kmeans_sklearn", "xmeans" or "agglomerative".
+- *random_centroids*: Random centroids initialization for "custom_kmeans".
+- *distance_metric*: Distance metric for "custom_kmeans": "MINKOWSKI", "CHEBYSHEV", "EUCLIDEAN".
+- *compute_eig*: Compute eigenvectors or load them.
+- *k*: Number of desired clusters.
+- *networkx*: Use networkx library for Laplacian.
+- *eig_kept*: Number of eigen vectors kept.
+- *normalize_laplacian*: Normalize Laplacian.
+- *invert_laplacian*: Invert Laplacian.
+- *second*: Using only second smallest eigenvector.
+- *eig_normalization*: Normalization of eigen vectors by "vertex", "eig" or "None".
 
 ## Authors
 
-👤 **Alvaro Orgaz and Adrià Cabeza**
-
-- [@alvarorgaz](https://github.com/alvarorgaz)
-- [@adriacabeza](https://github.com/adriacabeza)
+👤 Álvaro Orgaz Expósito ([alvarorgaz](https://github.com/alvarorgaz))
+👤 Adrià Cabeza ([adriacabeza](https://github.com/adriacabeza))
