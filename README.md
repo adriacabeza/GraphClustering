@@ -1,5 +1,6 @@
 <h1 align="center">:milky_way: GraphClustering: Method to partition a graph </h1>
-We will be using the following graphs from the Stanford Network Analysis Project (SNAP): ca-GrQc, Oregon-1, roadNet-CA, soc-Epinions1, and web-NotreDame (http://snap.stanford.edu/data/index.html). Project description in _project.pdf_ and final report in _report.pdf_. 
+
+We will be using the following graphs from the Stanford Network Analysis Project (SNAP): ca-GrQc, Oregon-1, roadNet-CA, soc-Epinions1, and web-NotreDame (http://snap.stanford.edu/data/index.html). Project description in *project.pdf* and final report in *report.pdf*. 
 
 ## Initial example visualization and clustering of the graph ca-GrQc
 <p float="center">
