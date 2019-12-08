@@ -274,6 +274,8 @@ def score_clustering_graph(G, y_hat):
 
 # Main function
 def main():
+    print()
+    print()
     # Read graph file
     tracemalloc.start()
     global_time = time.time()
