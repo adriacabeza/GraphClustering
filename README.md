@@ -1,5 +1,13 @@
 <h1 align="center">:milky_way: GraphClustering: Method to partition a graph </h1>
 
+[![HitCount](http://hits.dwyl.io/adriacabeza/object-cut.svg)](http://hits.dwyl.io/AlbertSuarez/GraphClustering)
+[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/adriacabeza/GraphClustering)
+[![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
+[![GitHub stars](https://img.shields.io/github/stars/adriacabeza/GraphClustering.svg)](https://GitHub.com/adriacabeza/GraphClustering/stargazers/)
+
+
+
+
 We will be using the following graphs from the Stanford Network Analysis Project (SNAP): ca-GrQc, Oregon-1, roadNet-CA, soc-Epinions1, and web-NotreDame (http://snap.stanford.edu/data/index.html). Project description in *project.pdf* and final report in *report.pdf*. 
 
 ## Initial example visualization and clustering of the graph ca-GrQc
