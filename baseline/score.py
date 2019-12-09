@@ -1,14 +1,11 @@
 import argparse
 import networkx as nx
 
-
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--file', type=str, default='./data/Oregon-1.txt', help='Path of the input graph file.')
 parser.add_argument('--output', type=str,  help='Path of the result file.')
 parser.add_argument('--k', type=int, default=5, help='Number of desired clusters.')
 args = parser.parse_args()
-
 
 # Score our partitions using a graph and its cluster
 def score_clustering_graph(G, y_hat):
@@ -28,21 +25,18 @@ def score_clustering_graph(G, y_hat):
         total += count/v_isize
     return total
 
-
-
 print('Reading Graph')
 f = open(args.file, 'rb')
 G = nx.read_edgelist(f)
 f.close()
 
-y_hat = dict()
 print('Reading result')
+y_hat = dict()
 with open(args.output, 'rb') as f:
         next(f)
         for line in f:
             line_list = line.replace('\n','').split()
             y_hat[line_list[0]] = int(line_list[1])
-
 
 score = score_clustering_graph(G, y_hat)
 print('Score of the baseline: {}'.format(score))
