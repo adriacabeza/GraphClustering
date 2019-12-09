@@ -30,7 +30,7 @@ pip install -r requirements.txt
 Usage of [virtualenv](https://realpython.com/blog/python/python-virtual-environments-a-primer/) is recommended for package library / runtime isolation.
 
 ### Usage
-Run the clustering algorithm from the main Python file *graph_clustering.py*. You can read arguments help and find command examples in *REQUIREMENTS.txt*. List of arguments:
+Run the clustering algorithm from the main Python file *graph_clustering.py*. You can read arguments help and find command examples in *EXPERIMENTS.sh*. List of arguments:
 
 - *seed*: Random seed.
 - *iterations*: Number of iterations with different seed.
