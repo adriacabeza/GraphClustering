@@ -26,7 +26,7 @@ We will be using the following graphs from the Stanford Network Analysis Project
 | web-NotreDame | 325729    | 1117563 | 20        |
 | roadNet-CA    | 1957027   | 2760388 | 50        |
  
-## Deployment
+## Run it
 
 ### Requirements
 Python 3 and install dependencies:
