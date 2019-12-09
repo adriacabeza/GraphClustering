@@ -1,4 +1,4 @@
-<h1 align="center">:milky_way: GraphClustering: Method to partition a graph </h1>
+<h1 align="center">:milky_way: Graph Clustering into communities </h1>
 
 [![HitCount](http://hits.dwyl.io/adriacabeza/object-cut.svg)](http://hits.dwyl.io/AlbertSuarez/GraphClustering)
 [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/adriacabeza/GraphClustering)
