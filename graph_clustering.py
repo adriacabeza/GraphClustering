@@ -295,7 +295,7 @@ def main():
                     if best_file!='':
                         os.remove(best_file)
                     best_file = save_result(G, y_hat, score)
-                    break
+                    #break
 
 
 if __name__=='__main__':
