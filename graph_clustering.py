@@ -4,7 +4,6 @@ import os.path
 import argparse
 import pickle
 import random
-import tracemalloc
 import resource
 import numpy as np
 import scipy as sp
@@ -159,8 +158,6 @@ def spectral_clustering(G):
     graphID = args.file.split('/')[-1].split('.txt')[-2]
     file_output = graphID+'_normalized_laplacian'+str(args.normalize_laplacian)+'_invert_'+str(args.invert_laplacian)+'.pickle'
     print('Starting spectral clustering')
-    print(file_output)
-    print(os.path.exists(file_output))
     if args.compute_eig and not os.path.exists(file_output):
         print('Starting to compute eigenvectors')
         if args.networkx:
@@ -265,7 +262,6 @@ def main():
     print()
     print()
     # Read graph file
-    tracemalloc.start()
     global_time = time.time()
     f = open(args.file, 'rb')
     G = nx.read_edgelist(f)
@@ -276,7 +272,6 @@ def main():
     y_hat = spectral_clustering(G)
     time_aux = time.time()
     print('All the algorithm took: {:.3f}'.format(time_aux-global_time))
-    print('Memory allocated Peak: %d' % tracemalloc.get_tracemalloc_memory())
     if np.unique(list(y_hat.values())).shape[0]<args.k:
         best_file, best_score = '', np.inf
     else:
