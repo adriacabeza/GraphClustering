@@ -209,7 +209,6 @@ def spectral_clustering(G):
         kmeans = KMeans(n_clusters=args.k, random_state=args.seed)
         kmeans.fit(Y)
         clusters = kmeans.predict(Y)
-        print(clusters)
     elif args.clustering=='xmeans':
         print('Running XMeans clustering.')
         clusters = xmeans_clustering(Y, args.k)
@@ -259,7 +258,6 @@ def score_clustering_graph(G, y_hat):
 
 # Main function
 def main():
-    print()
     print()
     # Read graph file
     global_time = time.time()
