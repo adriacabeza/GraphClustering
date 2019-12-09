@@ -49,9 +49,7 @@ if args.eig_kept is None:
 
 
 # Faster and more customizable kmeans using pyclustering
-def custom_kmeans(data, k, tolerance=0.0001, ccore=True):
-    time1 = time.time()
-
+def custom_kmeans(data, k, tolerance=0.1, ccore=True):
     # Centroids initialization
     if args.random_centroids:
         random.seed(args.seed)
@@ -78,14 +76,12 @@ def custom_kmeans(data, k, tolerance=0.0001, ccore=True):
     # Change representation from index list to label list and return clusters
     encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
     clusters = encoder.get_clusters()
-    print('Custom kmeans using {} metric took {:.3f}'.format(args.distance_metric, (time.time()-time1)*100))
+    print('Custom k-means finalized')
     return clusters
 
 
 # Hierarchical agglomerative clustering
 def agglomerative_hierarchical(data, k, ccore=True):
-    time1 = time.time()
-
     # Clustering
     agglomerative_instance = agglomerative(data, k, type_link.SINGLE_LINK, ccore)
     agglomerative_instance.process()
@@ -96,14 +92,12 @@ def agglomerative_hierarchical(data, k, ccore=True):
     # Change representation from index list to label list and return clusters
     encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
     clusters = encoder.get_clusters()
-    print('Agglomerative clustering took {:.3f}'.format((time.time()-time1)*100))
+    print('Agglomerative clustering finalized')
     return clusters
 
 
 # Xmeans clustering
 def xmeans_clustering(data, k, ccore=True):
-    time1 = time.time()
-
     # Prepare initial centers (amount of initial centers defines amount of clusters from which X-Means will start analysis).
     random.seed(args.seed)
     initial_centers = kmeans_plusplus_initializer(data, k).initialize()
@@ -118,37 +112,25 @@ def xmeans_clustering(data, k, ccore=True):
     # Change representation from index list to label list and return clusters
     encoder.set_encoding(type_encoding.CLUSTER_INDEX_LABELING)
     clusters = encoder.get_clusters()
-    print('Xmeans clustering took {:.3f}'.format((time.time()-time1)*100))
+    print('Xmeans clustering took finalized')
     return clusters
 
 
 # Computes the k smallest(SM) eigenvalues and eigenvectors
 def get_eig_laplacian_networkx(G):
     if args.normalize_laplacian:
-        time1 = time.time()
         normalized_laplacian = nx.normalized_laplacian_matrix(G).astype(float)
-        print('Computing the normalized laplacian matrix took: {:3f}'.format((time.time()-time1)*100))
-
-        time1 = time.time()
         eigVec = eigsh((-1 if args.invert_laplacian else 1)*normalized_laplacian, k=args.eig_kept, which='LM' if args.invert_laplacian else 'SM')
-        print('Computing the eigenvectors of the normalized laplacian matrix took: {:.3f}'.format((time.time()-time1)*100))
         return eigVec
     else:
-        time1 = time.time()
         laplacian_matrix = nx.laplacian_matrix(G).astype(float)
-        print('Computing the laplacian matrix took: {:3f}'.format((time.time()-time1)*100))
-
-        time1 = time.time()
         eigVec = eigsh((-1 if args.invert_laplacian else 1)*laplacian_matrix, k=100, which='LM' if args.invert_laplacian else 'SM')
-        print('Computing the eigenvectors of the laplacian matrix took: {:.3f}'.format((time.time()-time1)*100))
         return eigVec
 
 
 def get_eig_laplacian(L):
     print('Computing eigenvectors')
-    time1 = time.time()
     eigVec = eigsh(L.real, k=args.eig_kept, which='SM')
-    print('Computing the eigenvectors of the laplacian matrix took: {:.3f}'.format((time.time()-time1)*100))
     return eigVec
 
 
@@ -176,22 +158,27 @@ def spectral_clustering(G):
     # Compute the eigenvectors of the graph
     graphID = args.file.split('/')[-1].split('.txt')[-2]
     file_output = graphID+'_normalized_laplacian'+str(args.normalize_laplacian)+'_invert_'+str(args.invert_laplacian)+'.pickle'
-    if args.compute_eig or not os.path.exists(file_output):
+    print('Starting spectral clustering')
+    print(file_output)
+    print(os.path.exists(file_output))
+    if args.compute_eig and not os.path.exists(file_output):
+        print('Starting to compute eigenvectors')
         if args.networkx:
+            print("Let's get the eigenvectors")
             eigVal, eigVec = get_eig_laplacian_networkx(G)
         else:
             A, n_vertices, edges = read_graph(args.file)
-            time1 = time.time()
             D = lil_matrix((n_vertices,n_vertices))
             aux_sum = A.sum(axis=1)
             for i in range(n_vertices):
                 D[i,i] = aux_sum[i]
             L = D-A
-            print('Computing the laplacian matrix by hand took: {:3f}'.format((time.time()-time1)*100))
             eigVal, eigVec = get_eig_laplacian(L)
+        print('Eigenvectors calculated, saving in {}'.format(file_output))
         with open(file_output, 'wb') as f:
             pickle.dump(eigVec, f)
     else:
+        print('Eigenvectors already calculated')
         with open(file_output, 'rb') as f:
             eigVec = pickle.load(f)
 
@@ -225,6 +212,7 @@ def spectral_clustering(G):
         kmeans = KMeans(n_clusters=args.k, random_state=args.seed)
         kmeans.fit(Y)
         clusters = kmeans.predict(Y)
+        print(clusters)
     elif args.clustering=='xmeans':
         print('Running XMeans clustering.')
         clusters = xmeans_clustering(Y, args.k)
@@ -286,30 +274,33 @@ def main():
     # Algorithm
     print('\nStarting the algorithm.')
     y_hat = spectral_clustering(G)
-    print('All the algorithm took: {:.3f}'.format(time.time()-global_time))
-    print('Memory allocated Peak: %d' % tracemalloc.get_traced_memory()[1])
+    time_aux = time.time()
+    print('All the algorithm took: {:.3f}'.format(time_aux-global_time))
+    print('Memory allocated Peak: %d' % tracemalloc.get_tracemalloc_memory())
     if np.unique(list(y_hat.values())).shape[0]<args.k:
         best_file, best_score = '', np.inf
     else:
         best_score = score_clustering_graph(G, y_hat)
         best_file = save_result(G, y_hat, best_score)
 
-    # Repeat algorithm with different seeds
-    for j in range(1, args.iterations):
-        args.seed = j
-        print('\nStarting the algorithm with seed {}'.format(j))
-        y_hat = spectral_clustering(G)
-        if np.unique(list(y_hat.values())).shape[0]<args.k:
-            pass
-        else:
-            score = score_clustering_graph(G, y_hat)
-            if score<best_score:
-                print('Score of the clustering: {}'.format(score))
-                best_score = score
-                if best_file!='':
-                    os.remove(best_file)
-                best_file = save_result(G, y_hat, score)
+    if args.random_centroids:
+        # Repeat algorithm with different seeds
+        for j in range(1, args.iterations):
+            args.seed = j
+            print('\nStarting the algorithm with seed {}'.format(j))
+            y_hat = spectral_clustering(G)
+            print(np.unique(list(y_hat.values())).shape[0])
+            if np.unique(list(y_hat.values())).shape[0]<args.k:
                 pass
+            else:
+                score = score_clustering_graph(G, y_hat)
+                if score<best_score:
+                    print('Score of the clustering: {}'.format(score))
+                    best_score = score
+                    if best_file!='':
+                        os.remove(best_file)
+                    best_file = save_result(G, y_hat, score)
+                    break
 
 
 if __name__=='__main__':
