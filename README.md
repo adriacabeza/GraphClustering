@@ -8,7 +8,7 @@
 
 
 
-We will be using the following graphs from the Stanford Network Analysis Project (SNAP): ca-GrQc, Oregon-1, roadNet-CA, soc-Epinions1, and web-NotreDame (http://snap.stanford.edu/data/index.html). Project description in *project.pdf* and final report in *report.pdf*. 
+We will be using the following graphs from the Stanford Network Analysis Project (SNAP): ca-GrQc, Oregon-1, roadNet-CA, soc-Epinions1, and web-NotreDame (http://snap.stanford.edu/data/index.html). Project description in [*project.pdf*](./project.pdf) and final report in [*report.pdf*](./report/report.pdf). 
 
 ## Initial example visualization and clustering of the graph ca-GrQc
 <p float="center">
